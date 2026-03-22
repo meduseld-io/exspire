@@ -25,11 +25,26 @@ export async function initDb() {
       category TEXT NOT NULL DEFAULT 'other',
       expiry_date TEXT NOT NULL,
       notify_email TEXT,
+      notify_push INTEGER NOT NULL DEFAULT 0,
       notify_days_before INTEGER NOT NULL DEFAULT 7,
       notified INTEGER NOT NULL DEFAULT 0,
+      push_notified INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      endpoint TEXT NOT NULL UNIQUE,
+      keys_json TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  // Migrate: add new columns if missing
+  try { db.run('ALTER TABLE items ADD COLUMN notify_push INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* column exists */ }
+  try { db.run('ALTER TABLE items ADD COLUMN push_notified INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* column exists */ }
   save();
   return db;
 }

@@ -506,3 +506,29 @@ input:focus, select:focus {
   gap: 0.5rem;
   justify-content: flex-end;
 }
+
+/* Toggle button */
+.toggle-btn {
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  min-width: 48px;
+}
+.toggle-btn:hover {
+  background: var(--border);
+}
+.toggle-btn--on {
+  background: var(--success);
+  color: #fff;
+  border-color: var(--success);
+}
+.toggle-btn--on:hover {
+  opacity: 0.9;
+}
+.toggle-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

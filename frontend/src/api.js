@@ -44,3 +44,38 @@ export async function sendTestNotification(email) {
   }
   return res.json();
 }
+
+export async function getVapidKey() {
+  const res = await fetch(`${BASE}/push/vapid-key`);
+  if (!res.ok) throw new Error('Push not configured');
+  return res.json();
+}
+
+export async function subscribePush(subscription) {
+  const res = await fetch(`${BASE}/push/subscribe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subscription }),
+  });
+  if (!res.ok) throw new Error('Failed to subscribe');
+  return res.json();
+}
+
+export async function unsubscribePush(endpoint) {
+  const res = await fetch(`${BASE}/push/unsubscribe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint }),
+  });
+  if (!res.ok) throw new Error('Failed to unsubscribe');
+  return res.json();
+}
+
+export async function testPush() {
+  const res = await fetch(`${BASE}/push/test`, { method: 'POST' });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Failed to send test push');
+  }
+  return res.json();
+}

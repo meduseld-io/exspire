@@ -22,7 +22,7 @@ export default function ItemForm({ initial, onSave, onCancel }) {
     category: isCustomInitial ? '__custom__' : (initial?.category || 'subscription'),
     customCategory: isCustomInitial ? initial.category : '',
     expiry_date: initial?.expiry_date?.split('T')[0] || '',
-    notify_type: initial?.notify_email ? 'email' : 'none',
+    notify_type: initial?.notify_push ? 'push' : (initial?.notify_email ? 'email' : 'none'),
     notify_days_before: initial?.notify_days_before ?? 7,
   });
 
@@ -37,6 +37,7 @@ export default function ItemForm({ initial, onSave, onCancel }) {
     // Pull email from settings if notification type is email
     const settings = JSON.parse(localStorage.getItem('exspire_settings') || '{}');
     data.notify_email = notify_type === 'email' ? (settings.email || '') : '';
+    data.notify_push = notify_type === 'push';
     onSave(data);
   };
 
@@ -78,6 +79,7 @@ export default function ItemForm({ initial, onSave, onCancel }) {
           <select value={form.notify_type} onChange={e => set('notify_type', e.target.value)}>
             <option value="none">None</option>
             <option value="email">Email</option>
+            <option value="push">Push</option>
           </select>
         </div>
         {form.notify_type !== 'none' && (

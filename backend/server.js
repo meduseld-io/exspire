@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import webpush from 'web-push';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { initDb, all, get, run } from './db.js';
@@ -14,6 +15,61 @@ app.use(express.json());
 // Serve frontend build in production
 app.use(express.static(join(__dirname, '../frontend/dist')));
 
+// Configure web push if VAPID keys are set
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT || 'mailto:admin@meduseld.io',
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+}
+
+// Get VAPID public key for client subscription
+app.get('/api/push/vapid-key', (req, res) => {
+  const key = process.env.VAPID_PUBLIC_KEY;
+  if (!key) return res.status(404).json({ error: 'Push not configured' });
+  res.json({ publicKey: key });
+});
+
+// Save push subscription
+app.post('/api/push/subscribe', (req, res) => {
+  const { subscription } = req.body;
+  if (!subscription?.endpoint) return res.status(400).json({ error: 'Invalid subscription' });
+  const existing = get('SELECT * FROM push_subscriptions WHERE endpoint = ?', [subscription.endpoint]);
+  if (!existing) {
+    run('INSERT INTO push_subscriptions (endpoint, keys_json) VALUES (?, ?)', [subscription.endpoint, JSON.stringify(subscription)]);
+  }
+  res.json({ success: true });
+});
+
+// Remove push subscription
+app.post('/api/push/unsubscribe', (req, res) => {
+  const { endpoint } = req.body;
+  if (!endpoint) return res.status(400).json({ error: 'endpoint is required' });
+  run('DELETE FROM push_subscriptions WHERE endpoint = ?', [endpoint]);
+  res.json({ success: true });
+});
+
+// Send test push notification
+app.post('/api/push/test', async (req, res) => {
+  const subs = all('SELECT * FROM push_subscriptions');
+  if (subs.length === 0) return res.status(400).json({ error: 'No push subscriptions found' });
+  const payload = JSON.stringify({ title: '⏰ ExSpire Test', body: 'Push notifications are working!' });
+  let sent = 0;
+  for (const sub of subs) {
+    try {
+      await webpush.sendNotification(JSON.parse(sub.keys_json), payload);
+      sent++;
+    } catch (err) {
+      console.error('Failed to send push to subscription:', err);
+      if (err.statusCode === 410 || err.statusCode === 404) {
+        run('DELETE FROM push_subscriptions WHERE id = ?', [sub.id]);
+      }
+    }
+  }
+  res.json({ success: true, sent });
+});
+
 // List all items
 app.get('/api/items', (req, res) => {
   const items = all('SELECT * FROM items ORDER BY expiry_date ASC');
@@ -22,13 +78,13 @@ app.get('/api/items', (req, res) => {
 
 // Create item
 app.post('/api/items', (req, res) => {
-  const { name, category, expiry_date, notify_email, notify_days_before } = req.body;
+  const { name, category, expiry_date, notify_email, notify_push, notify_days_before } = req.body;
   if (!name || !expiry_date) {
     return res.status(400).json({ error: 'name and expiry_date are required' });
   }
   const result = run(
-    `INSERT INTO items (name, category, expiry_date, notify_email, notify_days_before) VALUES (?, ?, ?, ?, ?)`,
-    [name, category || 'other', expiry_date, notify_email || null, notify_days_before ?? 7]
+    `INSERT INTO items (name, category, expiry_date, notify_email, notify_push, notify_days_before) VALUES (?, ?, ?, ?, ?, ?)`,
+    [name, category || 'other', expiry_date, notify_email || null, notify_push ? 1 : 0, notify_days_before ?? 7]
   );
   const item = get('SELECT * FROM items WHERE id = ?', [result.lastId]);
   res.status(201).json(item);
@@ -36,7 +92,7 @@ app.post('/api/items', (req, res) => {
 
 // Update item
 app.put('/api/items/:id', (req, res) => {
-  const { name, category, expiry_date, notify_email, notify_days_before } = req.body;
+  const { name, category, expiry_date, notify_email, notify_push, notify_days_before } = req.body;
   const existing = get('SELECT * FROM items WHERE id = ?', [Number(req.params.id)]);
   if (!existing) return res.status(404).json({ error: 'Item not found' });
 
@@ -45,19 +101,27 @@ app.put('/api/items/:id', (req, res) => {
     (notify_days_before !== undefined && notify_days_before !== existing.notify_days_before) ||
     (notify_email && notify_email !== existing.notify_email);
 
+  const shouldResetPushNotified = shouldResetNotified ||
+    (notify_push !== undefined && (notify_push ? 1 : 0) !== existing.notify_push);
+
   run(
     `UPDATE items SET
       name = COALESCE(?, name),
       category = COALESCE(?, category),
       expiry_date = COALESCE(?, expiry_date),
       notify_email = COALESCE(?, notify_email),
+      notify_push = ?,
       notify_days_before = COALESCE(?, notify_days_before),
-      notified = ?
+      notified = ?,
+      push_notified = ?
     WHERE id = ?`,
     [
       name || null, category || null, expiry_date || null,
-      notify_email ?? null, notify_days_before ?? null,
+      notify_email ?? null,
+      notify_push !== undefined ? (notify_push ? 1 : 0) : existing.notify_push,
+      notify_days_before ?? null,
       shouldResetNotified ? 0 : existing.notified,
+      shouldResetPushNotified ? 0 : existing.push_notified,
       Number(req.params.id),
     ]
   );

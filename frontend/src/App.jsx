@@ -1,16 +1,70 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchItems, createItem, updateItem, deleteItem, sendTestNotification } from './api.js';
+import { fetchItems, createItem, updateItem, deleteItem, sendTestNotification, getVapidKey, subscribePush, unsubscribePush, testPush } from './api.js';
 import ItemForm from './ItemForm.jsx';
 import ItemList from './ItemList.jsx';
 
-const CATEGORIES = ['subscription', 'document', 'warranty', 'membership', 'insurance', 'domain', 'license'];
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
 
-function SettingsModal({ settings, onSave, onClose }) {
+function SettingsModal({ settings, onSave, onClose, addToast }) {
   const [email, setEmail] = useState(settings.email || '');
+  const [pushEnabled, setPushEnabled] = useState(settings.pushEnabled || false);
+  const [pushLoading, setPushLoading] = useState(false);
+
+  const handlePushToggle = async () => {
+    setPushLoading(true);
+    try {
+      if (!pushEnabled) {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          addToast('Notification permission denied', 'error');
+          setPushLoading(false);
+          return;
+        }
+        const { publicKey } = await getVapidKey();
+        const reg = await navigator.serviceWorker.ready;
+        const subscription = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        });
+        await subscribePush(subscription.toJSON());
+        setPushEnabled(true);
+        addToast('Push notifications enabled');
+      } else {
+        const reg = await navigator.serviceWorker.ready;
+        const subscription = await reg.pushManager.getSubscription();
+        if (subscription) {
+          await unsubscribePush(subscription.endpoint);
+          await subscription.unsubscribe();
+        }
+        setPushEnabled(false);
+        addToast('Push notifications disabled');
+      }
+    } catch (err) {
+      console.error('Failed to toggle push notifications:', err);
+      addToast('Could not toggle push', 'error');
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  const handleTestPush = async () => {
+    try {
+      await testPush();
+      addToast('Test push sent');
+    } catch (err) {
+      console.error('Failed to send test push:', err);
+      addToast(err.message, 'error');
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({ ...settings, email });
+    onSave({ ...settings, email, pushEnabled });
   };
 
   return (
@@ -41,6 +95,25 @@ function SettingsModal({ settings, onSave, onClose }) {
                 placeholder="you@example.com"
               />
               <span className="settings-hint">Used when items have email notifications enabled</span>
+            </div>
+            <div className="settings-field" style={{ marginTop: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label className="settings-label">🔔 Push notifications</label>
+                <button
+                  type="button"
+                  className={`toggle-btn ${pushEnabled ? 'toggle-btn--on' : ''}`}
+                  onClick={handlePushToggle}
+                  disabled={pushLoading}
+                >
+                  {pushLoading ? '…' : (pushEnabled ? 'On' : 'Off')}
+                </button>
+              </div>
+              <span className="settings-hint">Browser push notifications for expiring items</span>
+              {pushEnabled && (
+                <button type="button" className="btn-test" style={{ marginTop: '0.35rem', fontSize: '0.75rem', padding: '0.3rem 0.6rem' }} onClick={handleTestPush}>
+                  Send test push
+                </button>
+              )}
             </div>
           </div>
 
@@ -240,7 +313,7 @@ export default function App() {
         </div>
       )}
 
-      {showSettings && <SettingsModal settings={settings} onSave={handleSaveSettings} onClose={() => setShowSettings(false)} />}
+      {showSettings && <SettingsModal settings={settings} onSave={handleSaveSettings} onClose={() => setShowSettings(false)} addToast={addToast} />}
 
       <div className="toast-container">
         {toasts.map(t => (
