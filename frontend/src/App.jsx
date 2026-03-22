@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchItems, createItem, updateItem, deleteItem } from './api.js';
+import { fetchItems, createItem, updateItem, deleteItem, sendTestNotification } from './api.js';
 import ItemForm from './ItemForm.jsx';
 import ItemList from './ItemList.jsx';
 
@@ -10,6 +10,7 @@ export default function App() {
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState(null);
+  const [testSending, setTestSending] = useState(false);
 
   const load = async () => {
     try {
@@ -58,6 +59,19 @@ export default function App() {
     setShowForm(false);
   };
 
+  const handleTestNotification = async () => {
+    setTestSending(true);
+    try {
+      await sendTestNotification('dylan_martin@mail.com');
+      setError(null);
+    } catch (err) {
+      console.error('Failed to send test notification:', err);
+      setError(err.message);
+    } finally {
+      setTestSending(false);
+    }
+  };
+
   return (
     <div className="app-container">
       <header className="app-header">
@@ -66,7 +80,12 @@ export default function App() {
           <span className="app-title">ExSpire</span>
         </div>
         {!showForm && (
-          <button className="btn-primary" onClick={() => setShowForm(true)}>+ Add Item</button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button className="btn-test" onClick={handleTestNotification} disabled={testSending}>
+              {testSending ? 'Sending…' : '📧 Test'}
+            </button>
+            <button className="btn-primary" onClick={() => setShowForm(true)}>+ Add Item</button>
+          </div>
         )}
       </header>
 

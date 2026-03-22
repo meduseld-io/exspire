@@ -54,6 +54,26 @@ async function checkAndNotify() {
   }
 }
 
+export async function sendTestNotification(email) {
+  if (!transporter) {
+    transporter = initTransporter();
+  }
+  if (!transporter) {
+    throw new Error('SMTP not configured');
+  }
+
+  await transporter.sendMail({
+    from: process.env.NOTIFICATION_FROM || process.env.SMTP_USER,
+    to: email,
+    subject: '⏰ Expiring soon: Test Item',
+    html: `
+      <h2>Expiry Reminder</h2>
+      <p><strong>Test Item</strong> (subscription) expires on <strong>1 April 2026</strong>.</p>
+      <p>You asked to be notified 7 day(s) before expiry.</p>
+    `,
+  });
+}
+
 export function startNotifier() {
   transporter = initTransporter();
   // Run every hour

@@ -4,7 +4,7 @@ import cors from 'cors';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { initDb, all, get, run } from './db.js';
-import { startNotifier } from './notifier.js';
+import { startNotifier, sendTestNotification } from './notifier.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -71,6 +71,19 @@ app.delete('/api/items/:id', (req, res) => {
   const result = run('DELETE FROM items WHERE id = ?', [Number(req.params.id)]);
   if (result.changes === 0) return res.status(404).json({ error: 'Item not found' });
   res.json({ success: true });
+});
+
+// Send test notification email
+app.post('/api/test-notification', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'email is required' });
+  try {
+    await sendTestNotification(email);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to send test notification:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 const PORT = process.env.PORT || 3001;

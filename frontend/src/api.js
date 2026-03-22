@@ -31,3 +31,16 @@ export async function deleteItem(id) {
   if (!res.ok) throw new Error('Failed to delete item');
   return res.json();
 }
+
+export async function sendTestNotification(email) {
+  const res = await fetch(`${BASE}/test-notification`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Failed to send test notification');
+  }
+  return res.json();
+}

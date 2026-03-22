@@ -88,6 +88,20 @@ input:focus, select:focus {
   background: var(--accent-hover);
 }
 
+.btn-test {
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.btn-test:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.btn-test:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .error-banner {
   background: var(--danger);
   color: #fff;
