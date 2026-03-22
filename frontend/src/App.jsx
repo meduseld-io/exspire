@@ -3,7 +3,7 @@ import { fetchItems, createItem, updateItem, deleteItem, sendTestNotification } 
 import ItemForm from './ItemForm.jsx';
 import ItemList from './ItemList.jsx';
 
-const CATEGORIES = ['subscription', 'document', 'warranty', 'membership', 'insurance', 'domain', 'license', 'other'];
+const CATEGORIES = ['subscription', 'document', 'warranty', 'membership', 'insurance', 'domain', 'license'];
 
 export default function App() {
   const [items, setItems] = useState([]);
@@ -95,6 +95,8 @@ export default function App() {
 
   const categoryCount = (cat) => items.filter(i => i.category === cat).length;
 
+  const allCategories = [...new Set(items.map(i => i.category))].sort();
+
   const filteredItems = (filter === 'all' ? items : items.filter(i => i.category === filter))
     .filter(i => !searchQuery || i.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -144,9 +146,8 @@ export default function App() {
           <button className={`filter-chip ${filter === 'all' ? 'filter-chip--active' : ''}`} onClick={() => setFilter('all')}>
             All <span className="filter-count">{items.length}</span>
           </button>
-          {CATEGORIES.map(cat => {
+          {allCategories.map(cat => {
             const count = categoryCount(cat);
-            if (count === 0) return null;
             return (
               <button key={cat} className={`filter-chip ${filter === cat ? 'filter-chip--active' : ''}`} onClick={() => setFilter(cat)}>
                 {cat} <span className="filter-count">{count}</span>

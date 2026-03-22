@@ -12,10 +12,15 @@ const rowStyle = { display: 'flex', gap: '0.75rem', marginBottom: '0.75rem', fle
 const fieldStyle = { display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1, minWidth: 180 };
 const labelStyle = { fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' };
 
+const PRESET_CATEGORIES = ['subscription', 'document', 'warranty', 'membership', 'insurance', 'domain', 'license'];
+
 export default function ItemForm({ categories, initial, onSave, onCancel }) {
+  const isCustomInitial = initial?.category && !PRESET_CATEGORIES.includes(initial.category) && initial.category !== 'other';
+
   const [form, setForm] = useState({
     name: initial?.name || '',
-    category: initial?.category || 'subscription',
+    category: isCustomInitial ? '__custom__' : (initial?.category || 'subscription'),
+    customCategory: isCustomInitial ? initial.category : '',
     expiry_date: initial?.expiry_date?.split('T')[0] || '',
     notify_email: initial?.notify_email || '',
     notify_days_before: initial?.notify_days_before ?? 7,
@@ -25,7 +30,11 @@ export default function ItemForm({ categories, initial, onSave, onCancel }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(form);
+    const { customCategory, ...data } = form;
+    if (data.category === '__custom__') {
+      data.category = customCategory.trim().toLowerCase() || 'other';
+    }
+    onSave(data);
   };
 
   return (
@@ -38,8 +47,18 @@ export default function ItemForm({ categories, initial, onSave, onCancel }) {
         <div style={fieldStyle}>
           <label style={labelStyle}>Category</label>
           <select value={form.category} onChange={e => set('category', e.target.value)}>
-            {categories.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+            {PRESET_CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+            <option value="__custom__">Custom…</option>
           </select>
+          {form.category === '__custom__' && (
+            <input
+              style={{ marginTop: '0.35rem' }}
+              value={form.customCategory}
+              onChange={e => set('customCategory', e.target.value)}
+              placeholder="e.g. pet, vehicle, travel"
+              required
+            />
+          )}
         </div>
       </div>
 
