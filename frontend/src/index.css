@@ -321,3 +321,88 @@ input:focus, select:focus {
     margin-left: 0.5rem;
   }
 }
+
+/* Filter count badges */
+.filter-count {
+  font-size: 0.65rem;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  margin-left: 0.25rem;
+}
+.filter-chip--active .filter-count {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Toast notifications */
+.toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 1000;
+}
+.toast {
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-weight: 500;
+  animation: toast-in 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.toast--success {
+  background: var(--success);
+  color: #fff;
+}
+.toast--error {
+  background: var(--danger);
+  color: #fff;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Delete confirmation dialog */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+.confirm-dialog {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  min-width: 280px;
+  text-align: center;
+}
+.confirm-dialog p {
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+.confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+.btn-cancel {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.btn-cancel:hover {
+  background: var(--border);
+}
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+.btn-danger:hover {
+  background: var(--danger-hover);
+}

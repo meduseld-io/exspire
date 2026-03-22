@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { fetchItems, createItem, updateItem, deleteItem, sendTestNotification } from './api.js';
 import ItemForm from './ItemForm.jsx';
 import ItemList from './ItemList.jsx';
@@ -9,18 +9,25 @@ export default function App() {
   const [items, setItems] = useState([]);
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [error, setError] = useState(null);
   const [testSending, setTestSending] = useState(false);
   const [filter, setFilter] = useState('all');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [toasts, setToasts] = useState([]);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  const addToast = useCallback((message, type = 'success') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+  }, []);
 
   const load = async () => {
     try {
       setItems(await fetchItems());
     } catch (err) {
       console.error('Failed to load items:', err);
-      setError('Could not load items');
+      addToast('Could not load items', 'error');
     }
   };
 
@@ -30,25 +37,36 @@ export default function App() {
     try {
       if (editing) {
         await updateItem(editing.id, data);
+        addToast('Item updated');
       } else {
         await createItem(data);
+        addToast('Item added');
       }
       setEditing(null);
       setShowForm(false);
       load();
     } catch (err) {
       console.error('Failed to save item:', err);
-      setError('Could not save item');
+      addToast('Could not save item', 'error');
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDeleteRequest = (id) => {
+    const item = items.find(i => i.id === id);
+    setDeleteConfirm({ id, name: item?.name || 'this item' });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm) return;
     try {
-      await deleteItem(id);
+      await deleteItem(deleteConfirm.id);
+      addToast('Item deleted');
       load();
     } catch (err) {
       console.error('Failed to delete item:', err);
-      setError('Could not delete item');
+      addToast('Could not delete item', 'error');
+    } finally {
+      setDeleteConfirm(null);
     }
   };
 
@@ -66,14 +84,19 @@ export default function App() {
     setTestSending(true);
     try {
       await sendTestNotification('dylan_martin@mail.com');
-      setError(null);
+      addToast('Test email sent');
     } catch (err) {
       console.error('Failed to send test notification:', err);
-      setError(err.message);
+      addToast(err.message, 'error');
     } finally {
       setTestSending(false);
     }
   };
+
+  const categoryCount = (cat) => items.filter(i => i.category === cat).length;
+
+  const filteredItems = (filter === 'all' ? items : items.filter(i => i.category === filter))
+    .filter(i => !searchQuery || i.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <div className="app-container">
@@ -107,13 +130,6 @@ export default function App() {
         )}
       </header>
 
-      {error && (
-        <div className="error-banner">
-          {error}
-          <button onClick={() => setError(null)} className="error-dismiss">✕</button>
-        </div>
-      )}
-
       {showForm && (
         <ItemForm
           categories={CATEGORIES}
@@ -125,14 +141,40 @@ export default function App() {
 
       {!showForm && (
         <div className="filter-bar">
-          <button className={`filter-chip ${filter === 'all' ? 'filter-chip--active' : ''}`} onClick={() => setFilter('all')}>All</button>
-          {CATEGORIES.map(cat => (
-            <button key={cat} className={`filter-chip ${filter === cat ? 'filter-chip--active' : ''}`} onClick={() => setFilter(cat)}>{cat}</button>
-          ))}
+          <button className={`filter-chip ${filter === 'all' ? 'filter-chip--active' : ''}`} onClick={() => setFilter('all')}>
+            All <span className="filter-count">{items.length}</span>
+          </button>
+          {CATEGORIES.map(cat => {
+            const count = categoryCount(cat);
+            if (count === 0) return null;
+            return (
+              <button key={cat} className={`filter-chip ${filter === cat ? 'filter-chip--active' : ''}`} onClick={() => setFilter(cat)}>
+                {cat} <span className="filter-count">{count}</span>
+              </button>
+            );
+          })}
         </div>
       )}
 
-      <ItemList items={(filter === 'all' ? items : items.filter(i => i.category === filter)).filter(i => !searchQuery || i.name.toLowerCase().includes(searchQuery.toLowerCase()))} onEdit={handleEdit} onDelete={handleDelete} />
+      <ItemList items={filteredItems} onEdit={handleEdit} onDelete={handleDeleteRequest} />
+
+      {deleteConfirm && (
+        <div className="confirm-overlay" onClick={() => setDeleteConfirm(null)}>
+          <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <p>Delete <strong>{deleteConfirm.name}</strong>?</p>
+            <div className="confirm-actions">
+              <button className="btn-cancel" onClick={() => setDeleteConfirm(null)}>Cancel</button>
+              <button className="btn-danger" onClick={handleDeleteConfirm}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="toast-container">
+        {toasts.map(t => (
+          <div key={t.id} className={`toast toast--${t.type}`}>{t.message}</div>
+        ))}
+      </div>
     </div>
   );
 }
