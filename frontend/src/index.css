@@ -186,6 +186,21 @@ input:focus, select:focus {
   transition: width 0.3s ease;
 }
 
+.tower-row--enter {
+  animation: tower-build 0.3s ease both;
+}
+
+@keyframes tower-build {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scaleY(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
 .tower-empty {
   text-align: center;
   color: var(--text-muted);

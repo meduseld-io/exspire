@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const categoryColors = {
   subscription: '#6366f1',
@@ -39,6 +39,17 @@ const MAX_WIDTH = 100;
 
 export default function ItemList({ items, onEdit, onDelete }) {
   const [expandedId, setExpandedId] = useState(null);
+  const [animKey, setAnimKey] = useState(0);
+  const prevItemsRef = useRef('');
+
+  // Trigger rebuild animation when the filtered set changes
+  const itemIds = items.map(i => i.id).join(',');
+  useEffect(() => {
+    if (prevItemsRef.current !== itemIds) {
+      prevItemsRef.current = itemIds;
+      setAnimKey(k => k + 1);
+    }
+  }, [itemIds]);
 
   if (!items.length) {
     return (
@@ -58,7 +69,7 @@ export default function ItemList({ items, onEdit, onDelete }) {
   const count = sorted.length;
 
   return (
-    <div className="tower">
+    <div className="tower" key={animKey}>
       {sorted.map((item, i) => {
         const days = daysUntil(item.expiry_date);
         const color = urgencyColor(days);
@@ -67,8 +78,11 @@ export default function ItemList({ items, onEdit, onDelete }) {
         // Linear interpolation: top item (i=0) gets MIN_WIDTH, bottom item gets MAX_WIDTH
         const widthPct = count === 1 ? MAX_WIDTH : MIN_WIDTH + ((MAX_WIDTH - MIN_WIDTH) * i) / (count - 1);
 
+        // Bottom-up stagger: last item (bottom) animates first
+        const delay = (count - 1 - i) * 0.04;
+
         return (
-          <div key={item.id} className="tower-row" style={{ width: `${widthPct}%` }}>
+          <div key={item.id} className="tower-row tower-row--enter" style={{ width: `${widthPct}%`, animationDelay: `${delay}s` }}>
             <div
               className={`tower-block ${days < 0 ? 'tower-block--expired' : ''} ${expandedId === item.id ? 'tower-block--expanded' : ''}`}
               style={{ borderLeftColor: color }}
