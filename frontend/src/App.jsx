@@ -63,6 +63,7 @@ export default function App() {
       <header className="app-header">
         <div className="app-logo-group">
           <img src="/logo.png" alt="ExSpire" className="app-logo" />
+          <span className="app-title">ExSpire</span>
         </div>
         {!showForm && (
           <button className="btn-primary" onClick={() => setShowForm(true)}>+ Add Item</button>
