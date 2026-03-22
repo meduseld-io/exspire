@@ -156,7 +156,7 @@ input:focus, select:focus {
 }
 
 .filter-select {
-  width: 100%;
+  width: 50%;
   text-transform: uppercase;
   font-size: 0.8rem;
   font-weight: 600;
