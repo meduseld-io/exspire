@@ -12,6 +12,8 @@ export default function App() {
   const [error, setError] = useState(null);
   const [testSending, setTestSending] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const load = async () => {
     try {
@@ -81,7 +83,22 @@ export default function App() {
           <span className="app-title">ExSpire</span>
         </div>
         {!showForm && (
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            {searchOpen ? (
+              <div className="search-inline">
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder="Search items…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  autoFocus
+                />
+                <button className="btn-icon" onClick={() => { setSearchOpen(false); setSearchQuery(''); }}>✕</button>
+              </div>
+            ) : (
+              <button className="btn-icon" onClick={() => setSearchOpen(true)}>🔍</button>
+            )}
             <button className="btn-test" onClick={handleTestNotification} disabled={testSending}>
               {testSending ? 'Sending…' : '📧 Test'}
             </button>
@@ -115,7 +132,7 @@ export default function App() {
         </div>
       )}
 
-      <ItemList items={filter === 'all' ? items : items.filter(i => i.category === filter)} onEdit={handleEdit} onDelete={handleDelete} />
+      <ItemList items={(filter === 'all' ? items : items.filter(i => i.category === filter)).filter(i => !searchQuery || i.name.toLowerCase().includes(searchQuery.toLowerCase()))} onEdit={handleEdit} onDelete={handleDelete} />
     </div>
   );
 }
