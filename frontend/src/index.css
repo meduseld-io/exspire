@@ -406,3 +406,103 @@ input:focus, select:focus {
 .btn-danger:hover {
   background: var(--danger-hover);
 }
+
+/* Profile button */
+.btn-profile {
+  background: transparent;
+  padding: 0;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-profile:hover {
+  opacity: 0.8;
+}
+.profile-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+.profile-avatar--lg {
+  width: 48px;
+  height: 48px;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+/* Settings modal */
+.settings-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  width: 380px;
+  max-width: 90vw;
+}
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+.settings-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.settings-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--bg);
+  border-radius: var(--radius);
+  margin-bottom: 1.25rem;
+}
+.settings-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.settings-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.settings-section {
+  margin-bottom: 1.25rem;
+}
+.settings-section-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 600;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.settings-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+.settings-hint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.settings-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}

@@ -14,7 +14,7 @@ const labelStyle = { fontSize: '0.75rem', color: 'var(--text-muted)', textTransf
 
 const PRESET_CATEGORIES = ['subscription', 'document', 'warranty', 'membership', 'insurance', 'domain', 'license'];
 
-export default function ItemForm({ categories, initial, onSave, onCancel }) {
+export default function ItemForm({ initial, onSave, onCancel }) {
   const isCustomInitial = initial?.category && !PRESET_CATEGORIES.includes(initial.category) && initial.category !== 'other';
 
   const [form, setForm] = useState({
@@ -22,7 +22,7 @@ export default function ItemForm({ categories, initial, onSave, onCancel }) {
     category: isCustomInitial ? '__custom__' : (initial?.category || 'subscription'),
     customCategory: isCustomInitial ? initial.category : '',
     expiry_date: initial?.expiry_date?.split('T')[0] || '',
-    notify_email: initial?.notify_email || '',
+    notify_type: initial?.notify_email ? 'email' : 'none',
     notify_days_before: initial?.notify_days_before ?? 7,
   });
 
@@ -30,10 +30,13 @@ export default function ItemForm({ categories, initial, onSave, onCancel }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const { customCategory, ...data } = form;
+    const { customCategory, notify_type, ...data } = form;
     if (data.category === '__custom__') {
       data.category = customCategory.trim().toLowerCase() || 'other';
     }
+    // Pull email from settings if notification type is email
+    const settings = JSON.parse(localStorage.getItem('exspire_settings') || '{}');
+    data.notify_email = notify_type === 'email' ? (settings.email || '') : '';
     onSave(data);
   };
 
@@ -71,13 +74,18 @@ export default function ItemForm({ categories, initial, onSave, onCancel }) {
 
       <div style={rowStyle}>
         <div style={fieldStyle}>
-          <label style={labelStyle}>Notification Email</label>
-          <input type="email" value={form.notify_email} onChange={e => set('notify_email', e.target.value)} placeholder="you@example.com" />
+          <label style={labelStyle}>Notification</label>
+          <select value={form.notify_type} onChange={e => set('notify_type', e.target.value)}>
+            <option value="none">None</option>
+            <option value="email">Email</option>
+          </select>
         </div>
-        <div style={{ ...fieldStyle, maxWidth: 160 }}>
-          <label style={labelStyle}>Days Before</label>
-          <input type="number" min="0" max="365" value={form.notify_days_before} onChange={e => set('notify_days_before', parseInt(e.target.value) || 0)} />
-        </div>
+        {form.notify_type !== 'none' && (
+          <div style={{ ...fieldStyle, maxWidth: 160 }}>
+            <label style={labelStyle}>Days Before</label>
+            <input type="number" min="0" max="365" value={form.notify_days_before} onChange={e => set('notify_days_before', parseInt(e.target.value) || 0)} />
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>

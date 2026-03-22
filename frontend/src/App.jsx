@@ -5,6 +5,55 @@ import ItemList from './ItemList.jsx';
 
 const CATEGORIES = ['subscription', 'document', 'warranty', 'membership', 'insurance', 'domain', 'license'];
 
+function SettingsModal({ settings, onSave, onClose }) {
+  const [email, setEmail] = useState(settings.email || '');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave({ ...settings, email });
+  };
+
+  return (
+    <div className="confirm-overlay" onClick={onClose}>
+      <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="settings-header">
+          <span className="settings-title">Settings</span>
+          <button className="btn-icon" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="settings-profile">
+          <span className="profile-avatar profile-avatar--lg">T</span>
+          <div>
+            <div className="settings-name">Test User</div>
+            <div className="settings-sub">test@exspire.app</div>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="settings-section">
+            <span className="settings-section-title">Integrations</span>
+            <div className="settings-field">
+              <label className="settings-label">📧 Email address</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+              />
+              <span className="settings-hint">Used when items have email notifications enabled</span>
+            </div>
+          </div>
+
+          <div className="settings-actions">
+            <button type="button" className="btn-cancel" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn-primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [items, setItems] = useState([]);
   const [editing, setEditing] = useState(null);
@@ -15,6 +64,15 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [toasts, setToasts] = useState([]);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('exspire_settings') || '{}');
+    } catch (e) {
+      console.error('Failed to parse settings from localStorage:', e);
+      return {};
+    }
+  });
 
   const addToast = useCallback((message, type = 'success') => {
     const id = Date.now();
@@ -93,6 +151,13 @@ export default function App() {
     }
   };
 
+  const handleSaveSettings = (newSettings) => {
+    setSettings(newSettings);
+    localStorage.setItem('exspire_settings', JSON.stringify(newSettings));
+    setShowSettings(false);
+    addToast('Settings saved');
+  };
+
   const categoryCount = (cat) => items.filter(i => i.category === cat).length;
 
   const allCategories = [...new Set(items.map(i => i.category))].sort();
@@ -107,34 +172,38 @@ export default function App() {
           <img src="/logo.png" alt="ExSpire" className="app-logo" />
           <span className="app-title">ExSpire</span>
         </div>
-        {!showForm && (
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            {searchOpen ? (
-              <div className="search-inline">
-                <input
-                  type="text"
-                  className="search-input"
-                  placeholder="Search items…"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  autoFocus
-                />
-                <button className="btn-icon" onClick={() => { setSearchOpen(false); setSearchQuery(''); }}>✕</button>
-              </div>
-            ) : (
-              <button className="btn-icon" onClick={() => setSearchOpen(true)}>🔍</button>
-            )}
-            <button className="btn-test" onClick={handleTestNotification} disabled={testSending}>
-              {testSending ? 'Sending…' : '📧 Test'}
-            </button>
-            <button className="btn-primary" onClick={() => setShowForm(true)}>+ Add Item</button>
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {!showForm && (
+            <>
+              {searchOpen ? (
+                <div className="search-inline">
+                  <input
+                    type="text"
+                    className="search-input"
+                    placeholder="Search items…"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    autoFocus
+                  />
+                  <button className="btn-icon" onClick={() => { setSearchOpen(false); setSearchQuery(''); }}>✕</button>
+                </div>
+              ) : (
+                <button className="btn-icon" onClick={() => setSearchOpen(true)}>🔍</button>
+              )}
+              <button className="btn-test" onClick={handleTestNotification} disabled={testSending}>
+                {testSending ? 'Sending…' : '📧 Test'}
+              </button>
+              <button className="btn-primary" onClick={() => setShowForm(true)}>+ Add Item</button>
+            </>
+          )}
+          <button className="btn-profile" onClick={() => setShowSettings(true)}>
+            <span className="profile-avatar">T</span>
+          </button>
+        </div>
       </header>
 
       {showForm && (
         <ItemForm
-          categories={CATEGORIES}
           initial={editing}
           onSave={handleSave}
           onCancel={handleCancel}
@@ -170,6 +239,8 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {showSettings && <SettingsModal settings={settings} onSave={handleSaveSettings} onClose={() => setShowSettings(false)} />}
 
       <div className="toast-container">
         {toasts.map(t => (
