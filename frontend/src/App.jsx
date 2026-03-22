@@ -11,6 +11,7 @@ export default function App() {
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState(null);
   const [testSending, setTestSending] = useState(false);
+  const [filter, setFilter] = useState('all');
 
   const load = async () => {
     try {
@@ -105,7 +106,16 @@ export default function App() {
         />
       )}
 
-      <ItemList items={items} onEdit={handleEdit} onDelete={handleDelete} />
+      {!showForm && (
+        <div className="filter-bar">
+          <button className={`filter-chip ${filter === 'all' ? 'filter-chip--active' : ''}`} onClick={() => setFilter('all')}>All</button>
+          {CATEGORIES.map(cat => (
+            <button key={cat} className={`filter-chip ${filter === cat ? 'filter-chip--active' : ''}`} onClick={() => setFilter(cat)}>{cat}</button>
+          ))}
+        </div>
+      )}
+
+      <ItemList items={filter === 'all' ? items : items.filter(i => i.category === filter)} onEdit={handleEdit} onDelete={handleDelete} />
     </div>
   );
 }
