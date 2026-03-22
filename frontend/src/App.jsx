@@ -284,19 +284,33 @@ export default function App() {
       )}
 
       {!showForm && (
-        <div className="filter-bar">
-          <button className={`filter-chip ${filter === 'all' ? 'filter-chip--active' : ''}`} onClick={() => setFilter('all')}>
-            All <span className="filter-count">{items.length}</span>
-          </button>
-          {allCategories.map(cat => {
-            const count = categoryCount(cat);
-            return (
-              <button key={cat} className={`filter-chip ${filter === cat ? 'filter-chip--active' : ''}`} onClick={() => setFilter(cat)}>
-                {cat} <span className="filter-count">{count}</span>
-              </button>
-            );
-          })}
-        </div>
+        <>
+          <div className="filter-bar filter-bar--desktop">
+            <button className={`filter-chip ${filter === 'all' ? 'filter-chip--active' : ''}`} onClick={() => setFilter('all')}>
+              All <span className="filter-count">{items.length}</span>
+            </button>
+            {allCategories.map(cat => {
+              const count = categoryCount(cat);
+              return (
+                <button key={cat} className={`filter-chip ${filter === cat ? 'filter-chip--active' : ''}`} onClick={() => setFilter(cat)}>
+                  {cat} <span className="filter-count">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="filter-bar filter-bar--mobile">
+            <select
+              className="filter-select"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            >
+              <option value="all">All ({items.length})</option>
+              {allCategories.map(cat => (
+                <option key={cat} value={cat}>{cat} ({categoryCount(cat)})</option>
+              ))}
+            </select>
+          </div>
+        </>
       )}
 
       <ItemList items={filteredItems} onEdit={handleEdit} onDelete={handleDeleteRequest} />

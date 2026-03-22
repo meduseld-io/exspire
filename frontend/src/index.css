@@ -151,6 +151,18 @@ input:focus, select:focus {
   justify-content: center;
 }
 
+.filter-bar--mobile {
+  display: none;
+}
+
+.filter-select {
+  width: 100%;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
 .filter-chip {
   background: var(--surface);
   color: var(--text-muted);
@@ -303,6 +315,14 @@ input:focus, select:focus {
 }
 
 @media (max-width: 600px) {
+  .filter-bar--desktop {
+    display: none;
+  }
+
+  .filter-bar--mobile {
+    display: block;
+  }
+
   .tower-block-name {
     color: var(--cat-color);
   }
