@@ -1,0 +1,109 @@
+const categoryColors = {
+  subscription: '#6366f1',
+  document: '#f59e0b',
+  warranty: '#22c55e',
+  membership: '#ec4899',
+  insurance: '#14b8a6',
+  domain: '#8b5cf6',
+  license: '#f97316',
+  other: '#64748b',
+};
+
+function daysUntil(dateStr) {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr);
+  target.setHours(0, 0, 0, 0);
+  return Math.ceil((target - now) / (1000 * 60 * 60 * 24));
+}
+
+function urgencyColor(days) {
+  if (days < 0) return 'var(--text-muted)';
+  if (days <= 3) return 'var(--danger)';
+  if (days <= 14) return 'var(--warning)';
+  return 'var(--success)';
+}
+
+function urgencyLabel(days) {
+  if (days < 0) return 'Expired';
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Tomorrow';
+  return `${days}d`;
+}
+
+// Width ranges from MIN_WIDTH% (top, most urgent) to MAX_WIDTH% (bottom, least urgent)
+const MIN_WIDTH = 45;
+const MAX_WIDTH = 100;
+
+export default function ItemList({ items, onEdit, onDelete }) {
+  if (!items.length) {
+    return (
+      <div className="tower-empty">
+        No items yet. Add something that's expiring soon.
+      </div>
+    );
+  }
+
+  // Sort: soonest expiry first (top of tower)
+  const sorted = [...items].sort((a, b) => {
+    const da = daysUntil(a.expiry_date);
+    const db = daysUntil(b.expiry_date);
+    return da - db;
+  });
+
+  const count = sorted.length;
+
+  return (
+    <div className="tower">
+      {sorted.map((item, i) => {
+        const days = daysUntil(item.expiry_date);
+        const color = urgencyColor(days);
+        const catColor = categoryColors[item.category] || categoryColors.other;
+
+        // Linear interpolation: top item (i=0) gets MIN_WIDTH, bottom item gets MAX_WIDTH
+        const widthPct = count === 1 ? MAX_WIDTH : MIN_WIDTH + ((MAX_WIDTH - MIN_WIDTH) * i) / (count - 1);
+
+        return (
+          <div key={item.id} className="tower-row" style={{ width: `${widthPct}%` }}>
+            <div
+              className={`tower-block ${days < 0 ? 'tower-block--expired' : ''}`}
+              style={{ borderLeftColor: color }}
+            >
+              <div className="tower-block-left">
+                <div className="tower-block-header">
+                  <span className="tower-block-name">{item.name}</span>
+                  <span
+                    className="tower-block-category"
+                    style={{ background: catColor + '22', color: catColor }}
+                  >
+                    {item.category}
+                  </span>
+                </div>
+                <div className="tower-block-meta">
+                  {new Date(item.expiry_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {item.notify_email && <span> · notify {item.notify_days_before}d before</span>}
+                </div>
+              </div>
+
+              <div className="tower-block-right">
+                <span className="tower-block-urgency" style={{ color }}>
+                  {urgencyLabel(days)}
+                </span>
+                <button
+                  onClick={() => onEdit(item)}
+                  className="tower-btn"
+                  aria-label={`Edit ${item.name}`}
+                >✏️</button>
+                <button
+                  onClick={() => onDelete(item.id)}
+                  className="tower-btn tower-btn--danger"
+                  aria-label={`Delete ${item.name}`}
+                >🗑️</button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
