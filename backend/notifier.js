@@ -43,6 +43,8 @@ async function checkAndNotify() {
           <h2>Expiry Reminder</h2>
           <p><strong>${item.name}</strong> (${item.category}) expires on <strong>${expiryDate}</strong>.</p>
           <p>You asked to be notified ${item.notify_days_before} day(s) before expiry.</p>
+          <hr style="border:none;border-top:1px solid #2a2e3a;margin:16px 0" />
+          <p style="font-size:12px;color:#8b8d97">Sent by <a href="https://exspire.meduseld.io" style="color:#6366f1">ExSpire</a></p>
         `,
       });
 
@@ -70,6 +72,8 @@ export async function sendTestNotification(email) {
       <h2>Expiry Reminder</h2>
       <p><strong>Test Item</strong> (subscription) expires on <strong>1 April 2026</strong>.</p>
       <p>You asked to be notified 7 day(s) before expiry.</p>
+      <hr style="border:none;border-top:1px solid #2a2e3a;margin:16px 0" />
+      <p style="font-size:12px;color:#8b8d97">Sent by <a href="https://exspire.meduseld.io" style="color:#6366f1">ExSpire</a></p>
     `,
   });
 }
