@@ -79,7 +79,9 @@ export default function ItemList({ items, onEdit, onDelete }) {
         const widthPct = count === 1 ? MAX_WIDTH : MIN_WIDTH + ((MAX_WIDTH - MIN_WIDTH) * i) / (count - 1);
 
         // Bottom-up stagger: last item (bottom) animates first
-        const delay = (count - 1 - i) * 0.04;
+        // Adaptive delay: total animation ~0.5s regardless of count
+        const perItem = Math.min(0.08, 0.5 / count);
+        const delay = (count - 1 - i) * perItem;
 
         return (
           <div key={item.id} className="tower-row tower-row--enter" style={{ width: `${widthPct}%`, animationDelay: `${delay}s` }}>
