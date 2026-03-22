@@ -211,3 +211,43 @@ input:focus, select:focus {
 .tower-btn--danger:hover {
   background: rgba(239, 68, 68, 0.1);
 }
+
+/* Mobile responsive */
+.tower-block-meta--mobile {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .tower-block-name {
+    color: var(--cat-color);
+  }
+
+  .tower-block-category {
+    display: none;
+  }
+
+  .tower-btn {
+    display: none;
+  }
+
+  .tower-block--expanded .tower-btn {
+    display: inline-block;
+  }
+
+  .tower-block-meta--full {
+    display: none;
+  }
+
+  .tower-block-meta--mobile {
+    display: block;
+  }
+
+  .tower-block {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+  }
+
+  .tower-block-right {
+    margin-left: 0.5rem;
+  }
+}
