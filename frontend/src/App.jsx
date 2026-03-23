@@ -214,8 +214,6 @@ function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, th
           </div>
 
           <div className="settings-actions">
-            <button type="button" className="btn-danger" onClick={onLogout}>Logout</button>
-            <div style={{ flex: 1 }} />
             <button type="button" className="btn-cancel" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn-primary">Save</button>
           </div>
@@ -239,6 +237,8 @@ export default function App() {
   const [toasts, setToasts] = useState([]);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef(null);
   const [theme, setTheme] = useState(getTheme);
   const [settings, setSettings] = useState(() => {
     try { return JSON.parse(localStorage.getItem('exspire_settings') || '{}'); }
@@ -258,6 +258,16 @@ export default function App() {
       document.documentElement.setAttribute('data-theme', 'dark');
     }
   }, [user, theme]);
+
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    if (!profileOpen) return;
+    const handleClick = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [profileOpen]);
 
   const addToast = useCallback((message, type = 'success') => {
     const id = Date.now();
@@ -432,9 +442,26 @@ export default function App() {
               <button className="btn-add" onClick={() => setShowForm(true)}>+</button>
             </>
           )}
-          <button className="btn-profile" onClick={() => setShowSettings(true)}>
-            <span className="profile-avatar">{user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}</span>
-          </button>
+          <div className="profile-wrapper" ref={profileRef}>
+            <button className="btn-profile" onClick={() => setProfileOpen(!profileOpen)}>
+              <span className="profile-avatar">{user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}</span>
+            </button>
+            {profileOpen && (
+              <div className="profile-dropdown">
+                <div className="profile-dropdown-info">
+                  <span className="profile-dropdown-name">{user?.displayName || 'User'}</span>
+                  <span className="profile-dropdown-email">{user?.email}</span>
+                </div>
+                <div className="profile-dropdown-divider" />
+                <button className="profile-dropdown-item" onClick={() => { setProfileOpen(false); setShowSettings(true); }}>
+                  ⚙️ Settings
+                </button>
+                <button className="profile-dropdown-item profile-dropdown-item--danger" onClick={() => { setProfileOpen(false); handleLogout(); }}>
+                  ↪ Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
