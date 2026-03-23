@@ -131,9 +131,12 @@ function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, 
   );
 }
 
+const PAGE_SIZE = 21;
+
 export default function ItemList({ items, onEdit, onDelete, loading }) {
   const [expandedId, setExpandedId] = useState(null);
   const [animKey, setAnimKey] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const prevItemsRef = useRef('');
 
   const itemIds = items.map(i => i.id).join(',');
@@ -141,6 +144,7 @@ export default function ItemList({ items, onEdit, onDelete, loading }) {
     if (prevItemsRef.current !== itemIds) {
       prevItemsRef.current = itemIds;
       setAnimKey(k => k + 1);
+      setVisibleCount(PAGE_SIZE);
     }
   }, [itemIds]);
 
@@ -162,10 +166,12 @@ export default function ItemList({ items, onEdit, onDelete, loading }) {
 
   const sorted = [...items].sort((a, b) => daysUntil(a.expiry_date) - daysUntil(b.expiry_date));
   const count = sorted.length;
+  const visible = sorted.slice(0, visibleCount);
+  const hasMore = visibleCount < count;
 
   return (
     <div className="tower" key={animKey}>
-      {sorted.map((item, i) => {
+      {visible.map((item, i) => {
         const days = daysUntil(item.expiry_date);
         const color = urgencyColor(days);
         const catColor = categoryColors[item.category] || categoryColors.other;
@@ -189,6 +195,11 @@ export default function ItemList({ items, onEdit, onDelete, loading }) {
           />
         );
       })}
+      {hasMore && (
+        <button className="tower-show-more" onClick={() => setVisibleCount(v => v + PAGE_SIZE)}>
+          Show more ({count - visibleCount} remaining)
+        </button>
+      )}
     </div>
   );
 }
