@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import ItemForm from './ItemForm';
 
 export const categoryColors = {
   subscription: '#6366f1',
@@ -139,7 +140,7 @@ function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, 
 
 const PAGE_SIZE = 21;
 
-export default function ItemList({ items, onEdit, onDelete, loading, align = 'center' }) {
+export default function ItemList({ items, onEdit, onDelete, loading, align = 'center', editing, onSave, onCancel }) {
   const [expandedId, setExpandedId] = useState(null);
   const [animKey, setAnimKey] = useState(0);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -186,6 +187,14 @@ export default function ItemList({ items, onEdit, onDelete, loading, align = 'ce
         const widthPct = count === 1 ? MAX_WIDTH : MIN_WIDTH + ((MAX_WIDTH - MIN_WIDTH) * i) / (count - 1);
         const perItem = Math.min(0.08, 0.5 / count);
         const delay = (count - 1 - i) * perItem;
+
+        if (editing && item.id === editing.id) {
+          return (
+            <div key={item.id} className="tower-row" style={{ width: `${widthPct}%` }}>
+              <ItemForm initial={editing} onSave={onSave} onCancel={onCancel} inline />
+            </div>
+          );
+        }
 
         return (
           <SwipeableBlock

@@ -385,7 +385,7 @@ export default function App() {
     finally { setDeleteConfirm(null); }
   };
 
-  const handleEdit = (item) => { setEditing(item); setShowForm(true); };
+  const handleEdit = (item) => { setEditing(item); setShowForm(false); };
   const handleCancel = () => { setEditing(null); setShowForm(false); };
 
   const handleTestNotification = async () => {
@@ -477,7 +477,7 @@ export default function App() {
               <button className="btn-test" onClick={handleTestNotification} disabled={testSending}>
                 {testSending ? 'Sending…' : '📧 Test'}
               </button>
-              <button className="btn-add" onClick={() => setShowForm(true)}>+</button>
+              <button className="btn-add" onClick={() => { setEditing(null); setShowForm(true); }}>+</button>
             </>
           )}
           <div className="profile-wrapper" ref={profileRef}>
@@ -534,7 +534,7 @@ export default function App() {
         </>
       )}
 
-      <ItemList items={filteredItems} onEdit={handleEdit} onDelete={handleDeleteRequest} loading={itemsLoading} align={settings.towerAlign || 'center'} />
+      <ItemList items={filteredItems} onEdit={handleEdit} onDelete={handleDeleteRequest} loading={itemsLoading} align={settings.towerAlign || 'center'} editing={editing} onSave={handleSave} onCancel={handleCancel} />
 
       <footer className="app-footer">
         <p>&copy; {new Date().getFullYear()} <a href="https://github.com/meduseld-io" target="_blank" rel="noopener noreferrer">meduseld.io</a></p>

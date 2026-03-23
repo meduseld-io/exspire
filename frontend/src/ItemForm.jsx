@@ -14,7 +14,7 @@ const labelStyle = { fontSize: '0.75rem', color: 'var(--text-muted)', textTransf
 
 const PRESET_CATEGORIES = ['subscription', 'document', 'warranty', 'membership', 'insurance', 'domain', 'license'];
 
-export default function ItemForm({ initial, onSave, onCancel }) {
+export default function ItemForm({ initial, onSave, onCancel, inline }) {
   const isCustomInitial = initial?.category && !PRESET_CATEGORIES.includes(initial.category) && initial.category !== 'other';
 
   const [form, setForm] = useState({
@@ -43,8 +43,12 @@ export default function ItemForm({ initial, onSave, onCancel }) {
     onSave(data);
   };
 
+  const style = inline
+    ? { ...formStyle, marginBottom: 0, padding: '1rem' }
+    : formStyle;
+
   return (
-    <form onSubmit={handleSubmit} style={formStyle}>
+    <form onSubmit={handleSubmit} style={style}>
       <div style={rowStyle}>
         <div style={fieldStyle}>
           <label style={labelStyle}>Name</label>
