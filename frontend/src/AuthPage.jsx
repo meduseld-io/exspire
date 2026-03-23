@@ -117,7 +117,7 @@ export default function AuthPage({ onAuth }) {
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 6 characters"
+                placeholder={mode === 'login' ? 'Your password' : 'At least 6 characters'}
               />
             </div>
           )}
