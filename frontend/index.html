@@ -5,13 +5,14 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#6366f1" />
+    <meta name="theme-color" content="#1589cf" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="apple-touch-icon" href="/logo.png" />
-    <title>ExSpire</title>
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>ExSpire - Stay on top.</title>
   </head>
   <body>
+    <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('exspire_theme')||'dark')</script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

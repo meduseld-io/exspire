@@ -1,11 +1,14 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import crypto from 'crypto';
 import webpush from 'web-push';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { initDb, all, get, run } from './db.js';
-import { startNotifier, sendTestNotification } from './notifier.js';
+import { startNotifier, sendTestNotification, getTransporter } from './notifier.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -14,6 +17,252 @@ app.use(express.json());
 
 // Serve frontend build in production
 app.use(express.static(join(__dirname, '../frontend/dist')));
+
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+
+function signToken(user) {
+  return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+}
+
+function authMiddleware(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Not authenticated' });
+  try {
+    const payload = jwt.verify(header.slice(7), JWT_SECRET);
+    req.userId = payload.id;
+    next();
+  } catch (err) {
+    console.error('JWT verification failed:', err);
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+}
+
+// --- Auth routes ---
+
+app.post('/api/auth/signup', async (req, res) => {
+  const { email, password, displayName } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
+  if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+
+  const existing = get('SELECT id FROM users WHERE email = ?', [email.toLowerCase()]);
+  if (existing) return res.status(409).json({ error: 'An account with this email already exists' });
+
+  try {
+    const hash = await bcrypt.hash(password, 12);
+    const result = run('INSERT INTO users (email, password_hash, display_name) VALUES (?, ?, ?)', [email.toLowerCase(), hash, displayName || null]);
+    const user = get('SELECT id, email, display_name, email_verified FROM users WHERE id = ?', [result.lastId]);
+    res.status(201).json({ token: signToken(user), user: { id: user.id, email: user.email, displayName: user.display_name, emailVerified: !!user.email_verified } });
+  } catch (err) {
+    console.error('Signup failed:', err);
+    res.status(500).json({ error: 'Signup failed' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
+
+  const user = get('SELECT * FROM users WHERE email = ?', [email.toLowerCase()]);
+  if (!user) return res.status(401).json({ error: 'Invalid email or password' });
+
+  try {
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
+    res.json({ token: signToken(user), user: { id: user.id, email: user.email, displayName: user.display_name, emailVerified: !!user.email_verified } });
+  } catch (err) {
+    console.error('Login failed:', err);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+const APP_URL = process.env.APP_URL || 'https://exspire.meduseld.io';
+
+function buildAuthEmail({ heading, body, ctaText, ctaUrl }) {
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="margin:0;padding:0;background:#0f1117;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f1117;padding:32px 16px">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0" style="background:#1a1d27;border-radius:8px;border:1px solid #2a2e3a;overflow:hidden">
+        <tr>
+          <td style="background:#1a1d27;padding:24px 32px 16px;border-bottom:1px solid #2a2e3a">
+            <img src="${APP_URL}/logo.png" alt="ExSpire" style="height:28px;width:auto;vertical-align:middle;margin-right:8px" />
+            <span style="font-size:20px;font-weight:700;color:#1589cf;vertical-align:middle">ExSpire</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 32px">
+            <p style="margin:0 0 12px;font-size:18px;font-weight:600;color:#e4e4e7">${heading}</p>
+            <p style="margin:0 0 20px;font-size:14px;color:#e4e4e7;line-height:1.6">${body}</p>
+            <a href="${ctaUrl}" style="display:inline-block;background:#1589cf;color:#fff;text-decoration:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600">${ctaText}</a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 32px;border-top:1px solid #2a2e3a">
+            <p style="margin:0;font-size:12px;color:#8b8d97">
+              Sent by <a href="${APP_URL}" style="color:#1589cf;text-decoration:none">ExSpire</a> · Expiry tracking made simple
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+app.get('/api/auth/me', authMiddleware, (req, res) => {
+  const user = get('SELECT id, email, display_name, email_verified FROM users WHERE id = ?', [req.userId]);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  res.json({ id: user.id, email: user.email, displayName: user.display_name, emailVerified: !!user.email_verified });
+});
+
+// --- Email verification ---
+
+app.post('/api/auth/send-verification', authMiddleware, async (req, res) => {
+  const user = get('SELECT * FROM users WHERE id = ?', [req.userId]);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  if (user.email_verified) return res.json({ message: 'Already verified' });
+
+  const t = getTransporter();
+  if (!t) return res.status(500).json({ error: 'Email not configured' });
+
+  try {
+    const token = jwt.sign({ id: user.id, purpose: 'verify' }, JWT_SECRET, { expiresIn: '24h' });
+    const url = `${APP_URL}?verify=${encodeURIComponent(token)}`;
+    await t.sendMail({
+      from: process.env.NOTIFICATION_FROM || process.env.SMTP_USER,
+      to: user.email,
+      subject: 'Verify your ExSpire account',
+      html: buildAuthEmail({
+        heading: 'Verify your email',
+        body: 'Click the button below to verify your email address. This link expires in 24 hours.',
+        ctaText: 'Verify Email',
+        ctaUrl: url,
+      }),
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to send verification email:', err);
+    res.status(500).json({ error: 'Failed to send verification email' });
+  }
+});
+
+app.post('/api/auth/verify', async (req, res) => {
+  const { token } = req.body;
+  if (!token) return res.status(400).json({ error: 'Token is required' });
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    if (payload.purpose !== 'verify') return res.status(400).json({ error: 'Invalid token' });
+    run('UPDATE users SET email_verified = 1 WHERE id = ?', [payload.id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Email verification failed:', err);
+    res.status(400).json({ error: 'Invalid or expired token' });
+  }
+});
+
+// --- Password reset ---
+
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+
+  // Always return success to prevent email enumeration
+  const user = get('SELECT * FROM users WHERE email = ?', [email.toLowerCase()]);
+  if (!user) return res.json({ success: true });
+
+  const t = getTransporter();
+  if (!t) return res.status(500).json({ error: 'Email not configured' });
+
+  try {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+    run('INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)', [user.id, token, expiresAt]);
+
+    const url = `${APP_URL}?reset=${encodeURIComponent(token)}`;
+    await t.sendMail({
+      from: process.env.NOTIFICATION_FROM || process.env.SMTP_USER,
+      to: user.email,
+      subject: 'Reset your ExSpire password',
+      html: buildAuthEmail({
+        heading: 'Reset your password',
+        body: 'Click the button below to set a new password. This link expires in 1 hour. If you didn\'t request this, you can safely ignore this email.',
+        ctaText: 'Reset Password',
+        ctaUrl: url,
+      }),
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to send password reset email:', err);
+    res.status(500).json({ error: 'Failed to send reset email' });
+  }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) return res.status(400).json({ error: 'Token and password are required' });
+  if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+
+  const row = get("SELECT * FROM password_reset_tokens WHERE token = ? AND used = 0 AND expires_at > datetime('now')", [token]);
+  if (!row) return res.status(400).json({ error: 'Invalid or expired reset link' });
+
+  try {
+    const hash = await bcrypt.hash(password, 12);
+    run('UPDATE users SET password_hash = ? WHERE id = ?', [hash, row.user_id]);
+    run('UPDATE password_reset_tokens SET used = 1 WHERE id = ?', [row.id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Password reset failed:', err);
+    res.status(500).json({ error: 'Password reset failed' });
+  }
+});
+
+// --- Change password ---
+
+app.post('/api/auth/change-password', authMiddleware, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Current and new password are required' });
+  if (newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
+
+  const user = get('SELECT * FROM users WHERE id = ?', [req.userId]);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  try {
+    const valid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
+    const hash = await bcrypt.hash(newPassword, 12);
+    run('UPDATE users SET password_hash = ? WHERE id = ?', [hash, user.id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Change password failed:', err);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
+// --- Delete account ---
+
+app.delete('/api/auth/account', authMiddleware, async (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: 'Password is required to delete account' });
+
+  const user = get('SELECT * FROM users WHERE id = ?', [req.userId]);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  try {
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid) return res.status(401).json({ error: 'Incorrect password' });
+    run('DELETE FROM items WHERE user_id = ?', [user.id]);
+    run('DELETE FROM password_reset_tokens WHERE user_id = ?', [user.id]);
+    run('DELETE FROM users WHERE id = ?', [user.id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete account failed:', err);
+    res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
 
 // Configure web push if VAPID keys are set
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
@@ -70,30 +319,30 @@ app.post('/api/push/test', async (req, res) => {
   res.json({ success: true, sent });
 });
 
-// List all items
-app.get('/api/items', (req, res) => {
-  const items = all('SELECT * FROM items ORDER BY expiry_date ASC');
+// List all items (for current user)
+app.get('/api/items', authMiddleware, (req, res) => {
+  const items = all('SELECT * FROM items WHERE user_id = ? ORDER BY expiry_date ASC', [req.userId]);
   res.json(items);
 });
 
 // Create item
-app.post('/api/items', (req, res) => {
+app.post('/api/items', authMiddleware, (req, res) => {
   const { name, category, expiry_date, notify_email, notify_push, notify_days_before } = req.body;
   if (!name || !expiry_date) {
     return res.status(400).json({ error: 'name and expiry_date are required' });
   }
   const result = run(
-    `INSERT INTO items (name, category, expiry_date, notify_email, notify_push, notify_days_before) VALUES (?, ?, ?, ?, ?, ?)`,
-    [name, category || 'other', expiry_date, notify_email || null, notify_push ? 1 : 0, notify_days_before ?? 7]
+    `INSERT INTO items (user_id, name, category, expiry_date, notify_email, notify_push, notify_days_before) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [req.userId, name, category || 'other', expiry_date, notify_email || null, notify_push ? 1 : 0, notify_days_before ?? 7]
   );
   const item = get('SELECT * FROM items WHERE id = ?', [result.lastId]);
   res.status(201).json(item);
 });
 
 // Update item
-app.put('/api/items/:id', (req, res) => {
+app.put('/api/items/:id', authMiddleware, (req, res) => {
   const { name, category, expiry_date, notify_email, notify_push, notify_days_before } = req.body;
-  const existing = get('SELECT * FROM items WHERE id = ?', [Number(req.params.id)]);
+  const existing = get('SELECT * FROM items WHERE id = ? AND user_id = ?', [Number(req.params.id), req.userId]);
   if (!existing) return res.status(404).json({ error: 'Item not found' });
 
   const shouldResetNotified =
@@ -131,14 +380,15 @@ app.put('/api/items/:id', (req, res) => {
 });
 
 // Delete item
-app.delete('/api/items/:id', (req, res) => {
-  const result = run('DELETE FROM items WHERE id = ?', [Number(req.params.id)]);
-  if (result.changes === 0) return res.status(404).json({ error: 'Item not found' });
+app.delete('/api/items/:id', authMiddleware, (req, res) => {
+  const existing = get('SELECT * FROM items WHERE id = ? AND user_id = ?', [Number(req.params.id), req.userId]);
+  if (!existing) return res.status(404).json({ error: 'Item not found' });
+  run('DELETE FROM items WHERE id = ? AND user_id = ?', [Number(req.params.id), req.userId]);
   res.json({ success: true });
 });
 
 // Send test notification email
-app.post('/api/test-notification', async (req, res) => {
+app.post('/api/test-notification', authMiddleware, async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'email is required' });
   try {

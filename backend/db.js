@@ -19,8 +19,32 @@ export async function initDb() {
   }
 
   db.run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      display_name TEXT,
+      email_verified INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      used INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
+
+  db.run(`
     CREATE TABLE IF NOT EXISTS items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
       name TEXT NOT NULL,
       category TEXT NOT NULL DEFAULT 'other',
       expiry_date TEXT NOT NULL,
@@ -29,7 +53,8 @@ export async function initDb() {
       notify_days_before INTEGER NOT NULL DEFAULT 7,
       notified INTEGER NOT NULL DEFAULT 0,
       push_notified INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `);
 
@@ -45,6 +70,8 @@ export async function initDb() {
   // Migrate: add new columns if missing
   try { db.run('ALTER TABLE items ADD COLUMN notify_push INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* column exists */ }
   try { db.run('ALTER TABLE items ADD COLUMN push_notified INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* column exists */ }
+  try { db.run('ALTER TABLE items ADD COLUMN user_id INTEGER'); } catch (e) { /* column exists */ }
+  try { db.run('ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* column exists */ }
   save();
   return db;
 }
