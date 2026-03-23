@@ -36,7 +36,8 @@ export default function ItemForm({ initial, onSave, onCancel }) {
     }
     // Pull email from settings if notification type is email
     const settings = JSON.parse(localStorage.getItem('exspire_settings') || '{}');
-    data.notify_email = notify_type === 'email' ? (settings.email || '') : '';
+    const userEmail = settings.email || '';
+    data.notify_email = notify_type === 'email' ? userEmail : '';
     data.notify_push = notify_type === 'push';
     onSave(data);
   };

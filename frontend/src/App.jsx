@@ -21,7 +21,7 @@ function applyTheme(theme) {
 }
 
 function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, theme, setTheme }) {
-  const [email, setEmail] = useState(settings.email || '');
+  const [email, setEmail] = useState(settings.email || user?.email || '');
   const [pushEnabled, setPushEnabled] = useState(settings.pushEnabled || false);
   const [pushLoading, setPushLoading] = useState(false);
   // Change password
@@ -299,6 +299,15 @@ export default function App() {
   };
 
   useEffect(() => { if (user) load(); }, [user]);
+
+  // Auto-populate settings email from user's login email if not set
+  useEffect(() => {
+    if (user && !settings.email) {
+      const updated = { ...settings, email: user.email };
+      setSettings(updated);
+      localStorage.setItem('exspire_settings', JSON.stringify(updated));
+    }
+  }, [user]);
 
   // Pull-to-refresh handlers
   const handlePullStart = (e) => {
