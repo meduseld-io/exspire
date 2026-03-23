@@ -21,6 +21,5 @@
 
 ## Security & Reliability
 
-- [ ] **Input sanitization/validation** — Add `express-validator` to all API endpoints. Validate email format, password length, item fields, date formats. Sanitize string inputs to prevent XSS.
 - [ ] **Token refresh mechanism** — Current JWT tokens expire after 30 days with no refresh. Options: (a) sliding window — issue new token on each `/api/auth/me` call if token is >15 days old, or (b) separate refresh token flow with short-lived access tokens (15min) + long-lived refresh tokens (30d) stored in DB.
 - [ ] **Database backups** — Automated SQLite backup. Options: (a) cron job that copies `exspire.db` to cloud storage (S3/Google Drive) daily, (b) add a `/api/admin/backup` endpoint that triggers manual backup. Use the same Google Drive approach as meduseld's backup service, or a simple S3 upload.

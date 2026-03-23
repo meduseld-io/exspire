@@ -8,6 +8,7 @@ import jwt from 'jsonwebtoken';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import rateLimit from 'express-rate-limit';
+import { body, param, validationResult } from 'express-validator';
 import { initDb, all, get, run } from './db.js';
 import { startNotifier, sendTestNotification, getTransporter } from './notifier.js';
 
@@ -29,6 +30,14 @@ const authLimiter = rateLimit({
   message: { error: 'Too many attempts, please try again in 15 minutes' },
 });
 
+function validate(req, res, next) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ error: errors.array()[0].msg });
+  }
+  next();
+}
+
 function signToken(user) {
   return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
 }
@@ -48,10 +57,13 @@ function authMiddleware(req, res, next) {
 
 // --- Auth routes ---
 
-app.post('/api/auth/signup', authLimiter, async (req, res) => {
+app.post('/api/auth/signup', authLimiter,
+  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters').trim(),
+  body('displayName').optional().trim().escape(),
+  validate,
+  async (req, res) => {
   const { email, password, displayName } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
-  if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
 
   const existing = get('SELECT id FROM users WHERE email = ?', [email.toLowerCase()]);
   if (existing) return res.status(409).json({ error: 'An account with this email already exists' });
@@ -67,9 +79,12 @@ app.post('/api/auth/signup', authLimiter, async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', authLimiter, async (req, res) => {
+app.post('/api/auth/login', authLimiter,
+  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('password').notEmpty().withMessage('Password is required').trim(),
+  validate,
+  async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
 
   const user = get('SELECT * FROM users WHERE email = ?', [email.toLowerCase()]);
   if (!user) return res.status(401).json({ error: 'Invalid email or password' });
@@ -159,9 +174,11 @@ app.post('/api/auth/send-verification', authMiddleware, async (req, res) => {
   }
 });
 
-app.post('/api/auth/verify', async (req, res) => {
+app.post('/api/auth/verify',
+  body('token').notEmpty().withMessage('Token is required').trim(),
+  validate,
+  async (req, res) => {
   const { token } = req.body;
-  if (!token) return res.status(400).json({ error: 'Token is required' });
   try {
     const payload = jwt.verify(token, JWT_SECRET);
     if (payload.purpose !== 'verify') return res.status(400).json({ error: 'Invalid token' });
@@ -175,9 +192,11 @@ app.post('/api/auth/verify', async (req, res) => {
 
 // --- Password reset ---
 
-app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
+app.post('/api/auth/forgot-password', authLimiter,
+  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+  validate,
+  async (req, res) => {
   const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email is required' });
 
   // Always return success to prevent email enumeration
   const user = get('SELECT * FROM users WHERE email = ?', [email.toLowerCase()]);
@@ -210,10 +229,12 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
   }
 });
 
-app.post('/api/auth/reset-password', async (req, res) => {
+app.post('/api/auth/reset-password',
+  body('token').notEmpty().withMessage('Token is required').trim(),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters').trim(),
+  validate,
+  async (req, res) => {
   const { token, password } = req.body;
-  if (!token || !password) return res.status(400).json({ error: 'Token and password are required' });
-  if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
 
   const row = get("SELECT * FROM password_reset_tokens WHERE token = ? AND used = 0 AND expires_at > datetime('now')", [token]);
   if (!row) return res.status(400).json({ error: 'Invalid or expired reset link' });
@@ -231,10 +252,12 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
 // --- Change password ---
 
-app.post('/api/auth/change-password', authMiddleware, async (req, res) => {
+app.post('/api/auth/change-password', authMiddleware,
+  body('currentPassword').notEmpty().withMessage('Current password is required').trim(),
+  body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters').trim(),
+  validate,
+  async (req, res) => {
   const { currentPassword, newPassword } = req.body;
-  if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Current and new password are required' });
-  if (newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
 
   const user = get('SELECT * FROM users WHERE id = ?', [req.userId]);
   if (!user) return res.status(404).json({ error: 'User not found' });
@@ -253,9 +276,11 @@ app.post('/api/auth/change-password', authMiddleware, async (req, res) => {
 
 // --- Delete account ---
 
-app.delete('/api/auth/account', authMiddleware, async (req, res) => {
+app.delete('/api/auth/account', authMiddleware,
+  body('password').notEmpty().withMessage('Password is required to delete account').trim(),
+  validate,
+  async (req, res) => {
   const { password } = req.body;
-  if (!password) return res.status(400).json({ error: 'Password is required to delete account' });
 
   const user = get('SELECT * FROM users WHERE id = ?', [req.userId]);
   if (!user) return res.status(404).json({ error: 'User not found' });
@@ -335,25 +360,41 @@ app.get('/api/items', authMiddleware, (req, res) => {
 });
 
 // Create item
-app.post('/api/items', authMiddleware, (req, res) => {
+app.post('/api/items', authMiddleware,
+  body('name').notEmpty().withMessage('Name is required').trim().escape(),
+  body('category').optional().trim().escape(),
+  body('expiry_date').isISO8601().withMessage('Valid date is required (YYYY-MM-DD)').toDate(),
+  body('notify_email').optional({ values: 'falsy' }).isEmail().withMessage('Valid email required for notifications').normalizeEmail(),
+  body('notify_push').optional().isBoolean().toBoolean(),
+  body('notify_days_before').optional().isInt({ min: 0, max: 365 }).withMessage('Notify days must be 0-365').toInt(),
+  body('recurrence').optional().isIn(['none', 'weekly', 'monthly', 'yearly']).withMessage('Invalid recurrence value'),
+  validate,
+  (req, res) => {
   const { name, category, expiry_date, notify_email, notify_push, notify_days_before, recurrence } = req.body;
-  if (!name || !expiry_date) {
-    return res.status(400).json({ error: 'name and expiry_date are required' });
-  }
-  const validRecurrences = ['none', 'weekly', 'monthly', 'yearly'];
-  const rec = validRecurrences.includes(recurrence) ? recurrence : 'none';
+  const expDate = typeof expiry_date === 'object' ? expiry_date.toISOString().split('T')[0] : expiry_date;
+  const rec = recurrence || 'none';
   const result = run(
     `INSERT INTO items (user_id, name, category, expiry_date, notify_email, notify_push, notify_days_before, recurrence) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [req.userId, name, category || 'other', expiry_date, notify_email || null, notify_push ? 1 : 0, notify_days_before ?? 7, rec]
+    [req.userId, name, category || 'other', expDate, notify_email || null, notify_push ? 1 : 0, notify_days_before ?? 7, rec]
   );
   const item = get('SELECT * FROM items WHERE id = ?', [result.lastId]);
   res.status(201).json(item);
 });
 
 // Update item
-app.put('/api/items/:id', authMiddleware, (req, res) => {
+app.put('/api/items/:id', authMiddleware,
+  param('id').isInt().withMessage('Invalid item ID').toInt(),
+  body('name').optional().trim().escape(),
+  body('category').optional().trim().escape(),
+  body('expiry_date').optional().isISO8601().withMessage('Valid date is required (YYYY-MM-DD)'),
+  body('notify_email').optional({ values: 'falsy' }).isEmail().withMessage('Valid email required').normalizeEmail(),
+  body('notify_push').optional().isBoolean().toBoolean(),
+  body('notify_days_before').optional().isInt({ min: 0, max: 365 }).withMessage('Notify days must be 0-365').toInt(),
+  body('recurrence').optional().isIn(['none', 'weekly', 'monthly', 'yearly']).withMessage('Invalid recurrence value'),
+  validate,
+  (req, res) => {
   const { name, category, expiry_date, notify_email, notify_push, notify_days_before, recurrence } = req.body;
-  const existing = get('SELECT * FROM items WHERE id = ? AND user_id = ?', [Number(req.params.id), req.userId]);
+  const existing = get('SELECT * FROM items WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
   if (!existing) return res.status(404).json({ error: 'Item not found' });
 
   const validRecurrences = ['none', 'weekly', 'monthly', 'yearly'];
@@ -387,26 +428,31 @@ app.put('/api/items/:id', authMiddleware, (req, res) => {
       shouldResetNotified ? 0 : existing.notified,
       shouldResetPushNotified ? 0 : existing.push_notified,
       rec,
-      Number(req.params.id),
+      req.params.id,
     ]
   );
 
-  const item = get('SELECT * FROM items WHERE id = ?', [Number(req.params.id)]);
+  const item = get('SELECT * FROM items WHERE id = ?', [req.params.id]);
   res.json(item);
 });
 
 // Delete item
-app.delete('/api/items/:id', authMiddleware, (req, res) => {
-  const existing = get('SELECT * FROM items WHERE id = ? AND user_id = ?', [Number(req.params.id), req.userId]);
+app.delete('/api/items/:id', authMiddleware,
+  param('id').isInt().withMessage('Invalid item ID').toInt(),
+  validate,
+  (req, res) => {
+  const existing = get('SELECT * FROM items WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
   if (!existing) return res.status(404).json({ error: 'Item not found' });
-  run('DELETE FROM items WHERE id = ? AND user_id = ?', [Number(req.params.id), req.userId]);
+  run('DELETE FROM items WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
   res.json({ success: true });
 });
 
 // Send test notification email
-app.post('/api/test-notification', authMiddleware, async (req, res) => {
+app.post('/api/test-notification', authMiddleware,
+  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+  validate,
+  async (req, res) => {
   const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'email is required' });
   try {
     await sendTestNotification(email);
     res.json({ success: true });
