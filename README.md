@@ -41,10 +41,12 @@ Items are displayed in a tower layout — the closest to expiring sit at the nar
 
 ## Contributing
 
+ExSpire is licensed under the [GNU Affero General Public License v3.0](LICENSE). This means any modified version you deploy as a network service must also make its source code available to users.
+
 Contributions are welcome — feel free to open issues or submit pull requests on [GitHub](https://github.com/meduseld-io/exspire).
 
 ExSpire is developed and maintained by [@quietarcade](https://github.com/quietarcade) as part of [Meduseld](https://github.com/meduseld-io).
 
 ## License
 
-All rights reserved. This project is not currently licensed for redistribution.
+AGPL-3.0 — see [LICENSE](LICENSE).
