@@ -250,8 +250,14 @@ export default function App() {
   const [refreshing, setRefreshing] = useState(false);
   const pullRef = useRef({ startY: 0, pulling: false });
 
-  // Apply theme on mount
-  useEffect(() => { applyTheme(theme); }, []);
+  // Apply saved theme only when logged in; auth page always uses dark
+  useEffect(() => {
+    if (user) {
+      applyTheme(theme);
+    } else {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  }, [user, theme]);
 
   const addToast = useCallback((message, type = 'success') => {
     const id = Date.now();
@@ -270,6 +276,7 @@ export default function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('exspire_token');
+    document.documentElement.setAttribute('data-theme', 'dark');
     setUser(null);
     setItems([]);
   };

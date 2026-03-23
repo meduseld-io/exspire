@@ -12,7 +12,7 @@
     <title>ExSpire - Stay on top.</title>
   </head>
   <body>
-    <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('exspire_theme')||'dark')</script>
+    <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('exspire_token')?localStorage.getItem('exspire_theme')||'dark':'dark')</script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
