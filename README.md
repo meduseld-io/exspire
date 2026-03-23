@@ -11,14 +11,21 @@ Items are displayed in a tower layout — the closest to expiring sit at the nar
 - Category filtering with chip bar (desktop) and dropdown (mobile)
 - Inline search to filter items by name
 - Custom categories beyond the built-in presets
+- Recurring items (weekly, monthly, yearly) with auto-renewal on expiry
 - Email notifications before items expire (hourly cron check)
 - Browser push notifications via Web Push / VAPID
 - Dark and light mode (configurable in settings after login, defaults to dark)
+- Tower alignment setting (left, center, right)
+- Show/hide recurring items toggle (off by default)
 - Swipe left to reveal edit/delete actions on mobile
 - Pull-to-refresh on mobile
+- Paginated tower with "Show more" button (21 items per page)
 - Styled HTML email templates for notifications, verification, and password reset
 - PWA support with service worker and app manifest
+- Profile dropdown menu with settings and logout
 - Change password and delete account from settings
+- Rate limiting on auth endpoints (5 attempts per 15 minutes per IP)
+- Input sanitization and validation on all API endpoints (express-validator)
 - Toast notifications and delete confirmation dialogs
 - Staggered tower build animation on filter changes
 
@@ -31,6 +38,8 @@ Items are displayed in a tower layout — the closest to expiring sit at the nar
 - nodemailer for email notifications
 - web-push for browser push notifications
 - node-cron for scheduled checks (hourly)
+- express-rate-limit for brute force protection
+- express-validator for input sanitization
 
 ## Setup
 
