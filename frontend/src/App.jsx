@@ -25,6 +25,7 @@ function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, th
   const [pushEnabled, setPushEnabled] = useState(settings.pushEnabled || false);
   const [pushLoading, setPushLoading] = useState(false);
   const [towerAlign, setTowerAlign] = useState(settings.towerAlign || 'center');
+  const [showRecurring, setShowRecurring] = useState(settings.showRecurring ?? false);
   // Change password
   const [showChangePw, setShowChangePw] = useState(false);
   const [currentPw, setCurrentPw] = useState('');
@@ -116,7 +117,7 @@ function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, th
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({ ...settings, email, pushEnabled, towerAlign });
+    onSave({ ...settings, email, pushEnabled, towerAlign, showRecurring });
   };
 
   return (
@@ -161,6 +162,19 @@ function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, th
                   ))}
                 </div>
               </div>
+            </div>
+            <div className="settings-field" style={{ marginTop: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label className="settings-label">🔄 Show recurring items</label>
+                <button
+                  type="button"
+                  className={`toggle-btn ${showRecurring ? 'toggle-btn--on' : ''}`}
+                  onClick={() => setShowRecurring(!showRecurring)}
+                >
+                  {showRecurring ? 'On' : 'Off'}
+                </button>
+              </div>
+              <span className="settings-hint">When off, recurring items are hidden from the tower</span>
             </div>
           </div>
 
@@ -388,9 +402,11 @@ export default function App() {
     addToast('Settings saved');
   };
 
-  const searchFiltered = searchQuery ? items.filter(i => i.name.toLowerCase().includes(searchQuery.toLowerCase())) : items;
+  const showRecurringPref = settings.showRecurring ?? false;
+  const baseItems = showRecurringPref ? items : items.filter(i => !i.recurrence || i.recurrence === 'none');
+  const searchFiltered = searchQuery ? baseItems.filter(i => i.name.toLowerCase().includes(searchQuery.toLowerCase())) : baseItems;
   const categoryCount = (cat) => searchFiltered.filter(i => i.category === cat).length;
-  const allCategories = [...new Set(items.map(i => i.category))].sort();
+  const allCategories = [...new Set(baseItems.map(i => i.category))].sort();
   const filteredItems = filter === 'all' ? searchFiltered : searchFiltered.filter(i => i.category === filter);
 
   if (!authChecked) return (

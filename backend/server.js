@@ -327,13 +327,15 @@ app.get('/api/items', authMiddleware, (req, res) => {
 
 // Create item
 app.post('/api/items', authMiddleware, (req, res) => {
-  const { name, category, expiry_date, notify_email, notify_push, notify_days_before } = req.body;
+  const { name, category, expiry_date, notify_email, notify_push, notify_days_before, recurrence } = req.body;
   if (!name || !expiry_date) {
     return res.status(400).json({ error: 'name and expiry_date are required' });
   }
+  const validRecurrences = ['none', 'weekly', 'monthly', 'yearly'];
+  const rec = validRecurrences.includes(recurrence) ? recurrence : 'none';
   const result = run(
-    `INSERT INTO items (user_id, name, category, expiry_date, notify_email, notify_push, notify_days_before) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [req.userId, name, category || 'other', expiry_date, notify_email || null, notify_push ? 1 : 0, notify_days_before ?? 7]
+    `INSERT INTO items (user_id, name, category, expiry_date, notify_email, notify_push, notify_days_before, recurrence) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [req.userId, name, category || 'other', expiry_date, notify_email || null, notify_push ? 1 : 0, notify_days_before ?? 7, rec]
   );
   const item = get('SELECT * FROM items WHERE id = ?', [result.lastId]);
   res.status(201).json(item);
@@ -341,9 +343,12 @@ app.post('/api/items', authMiddleware, (req, res) => {
 
 // Update item
 app.put('/api/items/:id', authMiddleware, (req, res) => {
-  const { name, category, expiry_date, notify_email, notify_push, notify_days_before } = req.body;
+  const { name, category, expiry_date, notify_email, notify_push, notify_days_before, recurrence } = req.body;
   const existing = get('SELECT * FROM items WHERE id = ? AND user_id = ?', [Number(req.params.id), req.userId]);
   if (!existing) return res.status(404).json({ error: 'Item not found' });
+
+  const validRecurrences = ['none', 'weekly', 'monthly', 'yearly'];
+  const rec = recurrence !== undefined ? (validRecurrences.includes(recurrence) ? recurrence : existing.recurrence) : existing.recurrence;
 
   const shouldResetNotified =
     (expiry_date && expiry_date !== existing.expiry_date) ||
@@ -362,7 +367,8 @@ app.put('/api/items/:id', authMiddleware, (req, res) => {
       notify_push = ?,
       notify_days_before = COALESCE(?, notify_days_before),
       notified = ?,
-      push_notified = ?
+      push_notified = ?,
+      recurrence = ?
     WHERE id = ?`,
     [
       name || null, category || null, expiry_date || null,
@@ -371,6 +377,7 @@ app.put('/api/items/:id', authMiddleware, (req, res) => {
       notify_days_before ?? null,
       shouldResetNotified ? 0 : existing.notified,
       shouldResetPushNotified ? 0 : existing.push_notified,
+      rec,
       Number(req.params.id),
     ]
   );

@@ -37,6 +37,8 @@ const MIN_WIDTH = 45;
 const MAX_WIDTH = 100;
 const SWIPE_THRESHOLD = 60;
 
+const recurrenceLabels = { weekly: '🔄 Weekly', monthly: '🔄 Monthly', yearly: '🔄 Yearly' };
+
 function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, onDelete, expandedId, setExpandedId }) {
   const touchRef = useRef({ startX: 0, startY: 0, swiping: false });
   const [swipeOffset, setSwipeOffset] = useState(0);
@@ -111,12 +113,16 @@ function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, 
             <div className="tower-block-header">
               <span className="tower-block-name" style={{ '--cat-color': catColor }}>{item.name}</span>
               <span className="tower-block-category" style={{ background: catColor + '22', color: catColor }}>{item.category}</span>
+              {item.recurrence && item.recurrence !== 'none' && (
+                <span className="tower-block-recurrence">{recurrenceLabels[item.recurrence]}</span>
+              )}
             </div>
             <div className="tower-block-meta tower-block-meta--full">
               {new Date(item.expiry_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
               {item.notify_email && <span> · notify {item.notify_days_before}d before</span>}
             </div>
             <div className="tower-block-meta tower-block-meta--mobile">
+              {item.recurrence && item.recurrence !== 'none' && <span>🔄 {item.recurrence} · </span>}
               {item.notify_email && <span>notify {item.notify_days_before}d before</span>}
             </div>
           </div>

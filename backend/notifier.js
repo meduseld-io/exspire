@@ -175,11 +175,41 @@ export async function sendTestNotification(email) {
   });
 }
 
+function renewRecurringItems() {
+  const expired = all(`
+    SELECT * FROM items
+    WHERE recurrence != 'none'
+      AND date(expiry_date) < date('now')
+  `);
+
+  for (const item of expired) {
+    try {
+      const d = new Date(item.expiry_date);
+      if (item.recurrence === 'weekly') d.setDate(d.getDate() + 7);
+      else if (item.recurrence === 'monthly') d.setMonth(d.getMonth() + 1);
+      else if (item.recurrence === 'yearly') d.setFullYear(d.getFullYear() + 1);
+
+      const newDate = d.toISOString().split('T')[0];
+      run(
+        'UPDATE items SET expiry_date = ?, notified = 0, push_notified = 0 WHERE id = ?',
+        [newDate, item.id]
+      );
+      console.log(`Renewed recurring item "${item.name}" → ${newDate}`);
+    } catch (err) {
+      console.error(`Failed to renew recurring item "${item.name}":`, err);
+    }
+  }
+}
+
 export function startNotifier() {
   transporter = getTransporter();
   // Run every hour
-  cron.schedule('0 * * * *', checkAndNotify);
+  cron.schedule('0 * * * *', () => {
+    checkAndNotify();
+    renewRecurringItems();
+  });
   console.log('Notifier scheduled (hourly checks)');
   // Also run once on startup
   checkAndNotify();
+  renewRecurringItems();
 }

@@ -24,6 +24,7 @@ export default function ItemForm({ initial, onSave, onCancel }) {
     expiry_date: initial?.expiry_date?.split('T')[0] || '',
     notify_type: initial?.notify_push ? 'push' : (initial?.notify_email ? 'email' : 'none'),
     notify_days_before: initial?.notify_days_before ?? 7,
+    recurrence: initial?.recurrence || 'none',
   });
 
   const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
@@ -71,6 +72,15 @@ export default function ItemForm({ initial, onSave, onCancel }) {
         <div style={fieldStyle}>
           <label style={labelStyle}>Expiry Date</label>
           <input required type="date" value={form.expiry_date} onChange={e => set('expiry_date', e.target.value)} />
+        </div>
+        <div style={fieldStyle}>
+          <label style={labelStyle}>Recurring</label>
+          <select value={form.recurrence} onChange={e => set('recurrence', e.target.value)}>
+            <option value="none">No</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="yearly">Yearly</option>
+          </select>
         </div>
       </div>
 
