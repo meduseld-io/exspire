@@ -375,6 +375,7 @@ export default function App() {
   );
 
   return (
+    <>
     <div
       className="app-container auth-transition auth-transition--in"
       onTouchStart={handlePullStart}
@@ -470,27 +471,28 @@ export default function App() {
 
       <ItemList items={filteredItems} onEdit={handleEdit} onDelete={handleDeleteRequest} loading={itemsLoading} />
 
-      {deleteConfirm && (
-        <div className="confirm-overlay" onClick={() => setDeleteConfirm(null)}>
-          <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
-            <p>Delete <strong>{deleteConfirm.name}</strong>?</p>
-            <div className="confirm-actions">
-              <button className="btn-cancel" onClick={() => setDeleteConfirm(null)}>Cancel</button>
-              <button className="btn-danger" onClick={handleDeleteConfirm}>Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showSettings && <SettingsModal settings={settings} onSave={handleSaveSettings} onClose={() => setShowSettings(false)} addToast={addToast} user={user} onLogout={handleLogout} theme={theme} setTheme={setTheme} />}
-
-      <div className="toast-container">
-        {toasts.map(t => <div key={t.id} className={`toast toast--${t.type}`}>{t.message}</div>)}
-      </div>
-
       <footer className="app-footer">
         <p>&copy; {new Date().getFullYear()} <a href="https://github.com/meduseld-io" target="_blank" rel="noopener noreferrer">meduseld.io</a></p>
       </footer>
     </div>
+
+    {deleteConfirm && (
+      <div className="confirm-overlay" onClick={() => setDeleteConfirm(null)}>
+        <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+          <p>Delete <strong>{deleteConfirm.name}</strong>?</p>
+          <div className="confirm-actions">
+            <button className="btn-cancel" onClick={() => setDeleteConfirm(null)}>Cancel</button>
+            <button className="btn-danger" onClick={handleDeleteConfirm}>Delete</button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {showSettings && <SettingsModal settings={settings} onSave={handleSaveSettings} onClose={() => setShowSettings(false)} addToast={addToast} user={user} onLogout={handleLogout} theme={theme} setTheme={setTheme} />}
+
+    <div className="toast-container">
+      {toasts.map(t => <div key={t.id} className={`toast toast--${t.type}`}>{t.message}</div>)}
+    </div>
+  </>
   );
 }
