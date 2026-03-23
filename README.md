@@ -1,75 +1,50 @@
+<p align="center">
+  <img src="frontend/public/logo.png" alt="ExSpire" width="250">
+</p>
+
 # ExSpire
 
-Track things before they expire. Add subscriptions, documents, warranties, and more with expiry dates, then get reminders before they lapse.
+Track things before they expire. Add subscriptions, documents, warranties, memberships, and more with expiry dates, then get reminders before they lapse.
 
 Items are displayed in a tower layout — the closest to expiring sit at the narrow top, widening as deadlines stretch further out.
 
 ## Features
 
-- Email and password authentication (signup, login, password reset, email verification)
-- Tower-style item list sorted by urgency with color-coded expiry indicators
-- Category filtering with chip bar (desktop) and dropdown (mobile)
-- Inline search to filter items by name
-- Custom categories beyond the built-in presets
-- Recurring items (weekly, monthly, yearly) with auto-renewal on expiry
-- Email notifications before items expire (hourly cron check)
-- Browser push notifications via Web Push / VAPID
-- Dark and light mode (configurable in settings after login, defaults to dark)
-- Tower alignment setting (left, center, right)
-- Show/hide recurring items toggle (off by default)
-- Swipe left to reveal edit/delete actions on mobile
-- Pull-to-refresh on mobile
-- Paginated tower with "Show more" button (21 items per page)
-- Styled HTML email templates for notifications, verification, and password reset
-- PWA support with service worker and app manifest
-- Profile dropdown menu with settings and logout
-- Change password and delete account from settings
-- Rate limiting on auth endpoints (5 attempts per 15 minutes per IP)
-- Input sanitization and validation on all API endpoints (express-validator)
-- Toast notifications and delete confirmation dialogs
-- Staggered tower build animation on filter changes
+- **Tower view** — items stacked by urgency with color-coded expiry indicators (red for imminent, yellow for soon, green for safe)
+- **Categories** — built-in presets (subscription, document, warranty, membership, insurance, domain, license) plus custom categories
+- **Recurring items** — set items to repeat weekly, monthly, or yearly. When they expire, the next occurrence is auto-created with reset notifications
+- **Email reminders** — get notified a configurable number of days before an item expires
+- **Push notifications** — browser push via Web Push, with a test button to verify setup
+- **Search and filter** — filter by category or search by name to find items quickly
+- **Dark and light mode** — toggle in settings, defaults to dark
+- **Tower alignment** — align the tower left, center, or right
+- **Show/hide recurring** — toggle recurring items on or off in the tower (off by default)
+- **Paginated tower** — shows 21 items at a time with a "Show more" button
+- **Mobile gestures** — swipe left on items to reveal edit/delete actions, pull down to refresh
+- **Account management** — change password, delete account, email verification
+- **PWA support** — installable as a standalone app on mobile and desktop
 
-## Stack
+## How It Works
 
-- React (Vite) frontend
-- Express + SQLite (sql.js) backend
-- bcryptjs for password hashing
-- jsonwebtoken for session auth (30-day expiry)
-- nodemailer for email notifications
-- web-push for browser push notifications
-- node-cron for scheduled checks (hourly)
-- express-rate-limit for brute force protection
-- express-validator for input sanitization
+1. Create an account with your email and password
+2. Add items with a name, category, expiry date, and optional notification settings
+3. Your tower builds itself — items closest to expiring are at the top
+4. Get email or push reminders before things lapse
+5. Recurring items auto-renew when they expire, so you never lose track
 
-## Setup
+## Security
 
-```bash
-# Backend
-cd backend
-cp .env.example .env   # fill in SMTP + VAPID credentials
-npm install
-npm run dev
+- Passwords are hashed with bcrypt (12 rounds)
+- Auth tokens expire after 30 days
+- Rate limiting on login, signup, and password reset (5 attempts per 15 minutes)
+- All inputs are validated and sanitized server-side
 
-# Frontend
-cd frontend
-npm install
-npm run dev
-```
+## Contributing
 
-The Vite dev server proxies `/api` requests to the backend on port 3001.
+Contributions are welcome — feel free to open issues or submit pull requests on [GitHub](https://github.com/meduseld-io/exspire).
 
-## Environment Variables
+ExSpire is developed and maintained by [@quietarcade](https://github.com/quietarcade) as part of [Meduseld](https://github.com/meduseld-io).
 
-| Variable | Description |
-|---|---|
-| `PORT` | Backend port (default `3001`) |
-| `JWT_SECRET` | Secret for signing auth tokens |
-| `SMTP_HOST` | SMTP server hostname |
-| `SMTP_PORT` | SMTP server port |
-| `SMTP_USER` | SMTP username |
-| `SMTP_PASS` | SMTP password |
-| `NOTIFICATION_FROM` | Email sender name and address |
-| `VAPID_PUBLIC_KEY` | VAPID public key for web push |
-| `VAPID_PRIVATE_KEY` | VAPID private key for web push |
-| `VAPID_SUBJECT` | VAPID subject (mailto: URI) |
-| `APP_URL` | Public app URL for email links |
+## License
+
+All rights reserved. This project is not currently licensed for redistribution.
