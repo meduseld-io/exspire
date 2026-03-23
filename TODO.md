@@ -9,7 +9,6 @@
 
 ## Item Features
 
-- [ ] **Recurring items** — Add `recurrence` field to items table (`none`, `weekly`, `monthly`, `yearly`, custom interval). When an item expires and is recurring, auto-create the next occurrence with the new expiry date. Reset `notified`/`push_notified` flags. Show recurrence badge on tower blocks.
 - [ ] **Item detail view** — Tap a tower block to open a detail modal/page showing full item info: name, category, expiry date, notification settings, creation date, notification history. Allow inline editing from the detail view.
 - [ ] **Notification history** — Add `notification_log` table (`id`, `item_id`, `user_id`, `type` (email/push/sms/etc), `sent_at`, `status`). Log every notification sent. Show history in item detail view.
 - [ ] **Snooze notifications** — "Remind me again in X days" button on notifications (push action button, email link, in-app). Add `snoozed_until` column to items table. Notifier skips items where `snoozed_until > now`.
@@ -22,7 +21,6 @@
 
 ## Security & Reliability
 
-- [ ] **Rate limiting on auth endpoints** — Add `express-rate-limit` middleware to `/api/auth/login`, `/api/auth/signup`, `/api/auth/forgot-password`. Suggested: 5 attempts per 15 minutes per IP.
 - [ ] **Input sanitization/validation** — Add `express-validator` to all API endpoints. Validate email format, password length, item fields, date formats. Sanitize string inputs to prevent XSS.
 - [ ] **Token refresh mechanism** — Current JWT tokens expire after 30 days with no refresh. Options: (a) sliding window — issue new token on each `/api/auth/me` call if token is >15 days old, or (b) separate refresh token flow with short-lived access tokens (15min) + long-lived refresh tokens (30d) stored in DB.
 - [ ] **Database backups** — Automated SQLite backup. Options: (a) cron job that copies `exspire.db` to cloud storage (S3/Google Drive) daily, (b) add a `/api/admin/backup` endpoint that triggers manual backup. Use the same Google Drive approach as meduseld's backup service, or a simple S3 upload.
