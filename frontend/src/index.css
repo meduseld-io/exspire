@@ -708,6 +708,35 @@ input:focus, select:focus {
   cursor: not-allowed;
 }
 
+/* Alignment toggle */
+.align-toggle {
+  display: flex;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.align-btn {
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  border: none;
+  border-radius: 0;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.85rem;
+  line-height: 1;
+  min-width: 32px;
+}
+.align-btn:hover {
+  background: var(--border);
+}
+.align-btn--active {
+  background: var(--accent);
+  color: #fff;
+}
+.align-btn--active:hover {
+  background: var(--accent-hover);
+}
+
 /* Footer */
 .app-footer {
   text-align: center;

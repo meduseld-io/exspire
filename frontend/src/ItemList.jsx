@@ -133,7 +133,7 @@ function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, 
 
 const PAGE_SIZE = 21;
 
-export default function ItemList({ items, onEdit, onDelete, loading }) {
+export default function ItemList({ items, onEdit, onDelete, loading, align = 'center' }) {
   const [expandedId, setExpandedId] = useState(null);
   const [animKey, setAnimKey] = useState(0);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -169,8 +169,10 @@ export default function ItemList({ items, onEdit, onDelete, loading }) {
   const visible = sorted.slice(0, visibleCount);
   const hasMore = visibleCount < count;
 
+  const alignMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
+
   return (
-    <div className="tower" key={animKey}>
+    <div className="tower" key={animKey} style={{ alignItems: alignMap[align] || 'center' }}>
       {visible.map((item, i) => {
         const days = daysUntil(item.expiry_date);
         const color = urgencyColor(days);

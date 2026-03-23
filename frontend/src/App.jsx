@@ -24,6 +24,7 @@ function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, th
   const [email, setEmail] = useState(settings.email || user?.email || '');
   const [pushEnabled, setPushEnabled] = useState(settings.pushEnabled || false);
   const [pushLoading, setPushLoading] = useState(false);
+  const [towerAlign, setTowerAlign] = useState(settings.towerAlign || 'center');
   // Change password
   const [showChangePw, setShowChangePw] = useState(false);
   const [currentPw, setCurrentPw] = useState('');
@@ -115,7 +116,7 @@ function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, th
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({ ...settings, email, pushEnabled });
+    onSave({ ...settings, email, pushEnabled, towerAlign });
   };
 
   return (
@@ -147,6 +148,18 @@ function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, th
                 >
                   {theme === 'dark' ? 'Dark' : 'Light'}
                 </button>
+              </div>
+            </div>
+            <div className="settings-field" style={{ marginTop: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label className="settings-label">📐 Tower alignment</label>
+                <div className="align-toggle">
+                  {['left', 'center', 'right'].map(a => (
+                    <button key={a} type="button" className={`align-btn ${towerAlign === a ? 'align-btn--active' : ''}`} onClick={() => setTowerAlign(a)}>
+                      {a === 'left' ? '◧' : a === 'center' ? '◫' : '◨'}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -505,7 +518,7 @@ export default function App() {
         </>
       )}
 
-      <ItemList items={filteredItems} onEdit={handleEdit} onDelete={handleDeleteRequest} loading={itemsLoading} />
+      <ItemList items={filteredItems} onEdit={handleEdit} onDelete={handleDeleteRequest} loading={itemsLoading} align={settings.towerAlign || 'center'} />
 
       <footer className="app-footer">
         <p>&copy; {new Date().getFullYear()} <a href="https://github.com/meduseld-io" target="_blank" rel="noopener noreferrer">meduseld.io</a></p>
