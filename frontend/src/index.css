@@ -227,34 +227,34 @@ input:focus, select:focus {
   background: var(--accent-hover);
 }
 
-/* Tower layout */
-.tower {
+/* Spire layout */
+.spire {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
 }
 
-.tower-row {
+.spire-row {
   transition: width 0.3s ease;
 }
 
-.tower-row--enter {
-  animation: tower-build 0.3s ease both;
+.spire-row--enter {
+  animation: spire-build 0.3s ease both;
 }
 
-@keyframes tower-build {
+@keyframes spire-build {
   from { opacity: 0; transform: translateY(12px) scaleY(0.9); }
   to { opacity: 1; transform: translateY(0) scaleY(1); }
 }
 
-.tower-empty {
+.spire-empty {
   text-align: center;
   color: var(--text-muted);
   padding: 3rem 0;
 }
 
-.tower-show-more {
+.spire-show-more {
   margin-top: 0.75rem;
   background: var(--surface);
   color: var(--text-muted);
@@ -263,7 +263,7 @@ input:focus, select:focus {
   font-size: 0.8rem;
   font-weight: 600;
 }
-.tower-show-more:hover {
+.spire-show-more:hover {
   background: var(--surface-hover);
   color: var(--text);
 }
@@ -303,7 +303,7 @@ input:focus, select:focus {
   color: #fff;
 }
 
-.tower-block {
+.spire-block {
   position: relative;
   z-index: 1;
   background: var(--surface);
@@ -316,14 +316,14 @@ input:focus, select:focus {
   align-items: center;
   transition: background 0.15s;
 }
-.tower-block:hover {
+.spire-block:hover {
   background: var(--surface-hover);
 }
-.tower-block--expired {
+.spire-block--expired {
   opacity: 0.5;
 }
 
-.tower-block-left {
+.spire-block-left {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
@@ -331,13 +331,13 @@ input:focus, select:focus {
   overflow: hidden;
 }
 
-.tower-block-header {
+.spire-block-header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.tower-block-name {
+.spire-block-name {
   font-weight: 600;
   font-size: 0.9rem;
   white-space: nowrap;
@@ -345,7 +345,7 @@ input:focus, select:focus {
   text-overflow: ellipsis;
 }
 
-.tower-block-category {
+.spire-block-category {
   font-size: 0.65rem;
   padding: 0.05rem 0.45rem;
   border-radius: 999px;
@@ -356,7 +356,7 @@ input:focus, select:focus {
   flex-shrink: 0;
 }
 
-.tower-block-recurrence {
+.spire-block-recurrence {
   font-size: 0.6rem;
   padding: 0.05rem 0.4rem;
   border-radius: 999px;
@@ -367,7 +367,7 @@ input:focus, select:focus {
   flex-shrink: 0;
 }
 
-.tower-block-meta {
+.spire-block-meta {
   font-size: 0.75rem;
   color: var(--text-muted);
   white-space: nowrap;
@@ -375,7 +375,7 @@ input:focus, select:focus {
   text-overflow: ellipsis;
 }
 
-.tower-block-right {
+.spire-block-right {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -383,31 +383,31 @@ input:focus, select:focus {
   margin-left: 0.75rem;
 }
 
-.tower-block-urgency {
+.spire-block-urgency {
   font-weight: 700;
   font-size: 0.85rem;
   white-space: nowrap;
 }
 
-.tower-btn {
+.spire-btn {
   background: transparent;
   color: var(--text-muted);
   padding: 0.2rem 0.4rem;
   font-size: 0.8rem;
   border-radius: 4px;
 }
-.tower-btn:hover {
+.spire-btn:hover {
   background: var(--surface-hover);
 }
-.tower-btn--danger {
+.spire-btn--danger {
   color: var(--danger);
 }
-.tower-btn--danger:hover {
+.spire-btn--danger:hover {
   background: rgba(239, 68, 68, 0.1);
 }
 
 /* Mobile responsive */
-.tower-block-meta--mobile {
+.spire-block-meta--mobile {
   display: none;
 }
 
@@ -420,22 +420,22 @@ input:focus, select:focus {
   .filter-bar--desktop { display: none; }
   .filter-bar--mobile { display: block; }
 
-  .tower-block-name { color: var(--cat-color); }
-  .tower-block-category { display: none; }
-  .tower-block-recurrence { display: none; }
+  .spire-block-name { color: var(--cat-color); }
+  .spire-block-category { display: none; }
+  .spire-block-recurrence { display: none; }
 
   /* Hide inline edit/delete buttons on mobile — use swipe instead */
-  .tower-btn { display: none; }
+  .spire-btn { display: none; }
 
-  .tower-block-meta--full { display: none; }
-  .tower-block-meta--mobile { display: block; }
+  .spire-block-meta--full { display: none; }
+  .spire-block-meta--mobile { display: block; }
 
-  .tower-block {
+  .spire-block {
     padding: 0.5rem 0.75rem;
     cursor: pointer;
   }
 
-  .tower-block-right { margin-left: 0.5rem; }
+  .spire-block-right { margin-left: 0.5rem; }
 
   /* Show swipe actions on mobile */
   .swipe-actions { display: flex; }

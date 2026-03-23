@@ -6,7 +6,7 @@
 
 Track things before they expire. Add subscriptions, documents, warranties, memberships, and more with expiry dates, then get reminders before they lapse.
 
-Items are displayed in a tower layout — the closest to expiring sit at the narrow top, widening as deadlines stretch further out.
+Items are displayed in a spire layout — the closest to expiring sit at the narrow top, widening as deadlines stretch further out.
 
 ## Features
 
@@ -17,9 +17,9 @@ Items are displayed in a tower layout — the closest to expiring sit at the nar
 - **Push notifications** — browser push via Web Push, with a test button to verify setup
 - **Search and filter** — filter by category or search by name to find items quickly
 - **Dark and light mode** — toggle in settings, defaults to dark
-- **Tower alignment** — align the tower left, center, or right
-- **Show/hide recurring** — toggle recurring items on or off in the tower (off by default)
-- **Paginated tower** — shows 21 items at a time with a "Show more" button
+- **Spire alignment** — align the spire left, center, or right
+- **Show/hide recurring** — toggle recurring items on or off in the spire (off by default)
+- **Paginated spire** — shows 21 items at a time with a "Show more" button
 - **Mobile gestures** — swipe left on items to reveal edit/delete actions, pull down to refresh
 - **Account management** — change password, delete account, email verification
 - **PWA support** — installable as a standalone app on mobile and desktop
@@ -28,7 +28,7 @@ Items are displayed in a tower layout — the closest to expiring sit at the nar
 
 1. Create an account with your email and password
 2. Add items with a name, category, expiry date, and optional notification settings
-3. Your tower builds itself — items closest to expiring are at the top
+3. Your spire builds itself — items closest to expiring are at the top
 4. Get email or push reminders before things lapse
 5. Recurring items auto-renew when they expire, so you never lose track
 

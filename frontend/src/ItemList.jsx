@@ -96,41 +96,41 @@ function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, 
   };
 
   return (
-    <div key={item.id} className="tower-row tower-row--enter" style={{ width: `${widthPct}%`, animationDelay: `${delay}s` }}>
+    <div key={item.id} className="spire-row spire-row--enter" style={{ width: `${widthPct}%`, animationDelay: `${delay}s` }}>
       <div className="swipe-container">
         <div className="swipe-actions">
           <button className="swipe-btn swipe-btn--edit" onClick={() => onEdit(item)} aria-label={`Edit ${item.name}`}>✏️</button>
           <button className="swipe-btn swipe-btn--delete" onClick={() => onDelete(item.id)} aria-label={`Delete ${item.name}`}>🗑️</button>
         </div>
         <div
-          className={`tower-block ${days < 0 ? 'tower-block--expired' : ''} ${expandedId === item.id ? 'tower-block--expanded' : ''}`}
+          className={`spire-block ${days < 0 ? 'spire-block--expired' : ''} ${expandedId === item.id ? 'spire-block--expanded' : ''}`}
           style={{ borderLeftColor: color, transform: `translateX(${swipeOffset}px)`, transition: touchRef.current.swiping ? 'none' : 'transform 0.2s ease' }}
           onClick={handleSwipeOpen}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          <div className="tower-block-left">
-            <div className="tower-block-header">
-              <span className="tower-block-name" style={{ '--cat-color': catColor }}>{item.name}</span>
-              <span className="tower-block-category" style={{ background: catColor + '22', color: catColor }}>{item.category}</span>
+          <div className="spire-block-left">
+            <div className="spire-block-header">
+              <span className="spire-block-name" style={{ '--cat-color': catColor }}>{item.name}</span>
+              <span className="spire-block-category" style={{ background: catColor + '22', color: catColor }}>{item.category}</span>
               {item.recurrence && item.recurrence !== 'none' && (
-                <span className="tower-block-recurrence">{recurrenceLabels[item.recurrence]}</span>
+                <span className="spire-block-recurrence">{recurrenceLabels[item.recurrence]}</span>
               )}
             </div>
-            <div className="tower-block-meta tower-block-meta--full">
+            <div className="spire-block-meta spire-block-meta--full">
               {new Date(item.expiry_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
               {item.notify_email && <span> · notify {item.notify_days_before}d before</span>}
             </div>
-            <div className="tower-block-meta tower-block-meta--mobile">
+            <div className="spire-block-meta spire-block-meta--mobile">
               {item.recurrence && item.recurrence !== 'none' && <span>🔄 {item.recurrence} · </span>}
               {item.notify_email && <span>notify {item.notify_days_before}d before</span>}
             </div>
           </div>
-          <div className="tower-block-right">
-            <span className="tower-block-urgency" style={{ color }}>{urgencyLabel(days)}</span>
-            <button onClick={(e) => { e.stopPropagation(); onEdit(item); }} className="tower-btn" aria-label={`Edit ${item.name}`}>✏️</button>
-            <button onClick={(e) => { e.stopPropagation(); onDelete(item.id); }} className="tower-btn tower-btn--danger" aria-label={`Delete ${item.name}`}>🗑️</button>
+          <div className="spire-block-right">
+            <span className="spire-block-urgency" style={{ color }}>{urgencyLabel(days)}</span>
+            <button onClick={(e) => { e.stopPropagation(); onEdit(item); }} className="spire-btn" aria-label={`Edit ${item.name}`}>✏️</button>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(item.id); }} className="spire-btn spire-btn--danger" aria-label={`Delete ${item.name}`}>🗑️</button>
           </div>
         </div>
       </div>
@@ -157,7 +157,7 @@ export default function ItemList({ items, onEdit, onDelete, loading, align = 'ce
 
   if (loading) {
     return (
-      <div className="tower-empty">
+      <div className="spire-empty">
         <div className="spinner" style={{ margin: '0 auto' }} />
       </div>
     );
@@ -165,7 +165,7 @@ export default function ItemList({ items, onEdit, onDelete, loading, align = 'ce
 
   if (!items.length) {
     return (
-      <div className="tower-empty">
+      <div className="spire-empty">
         No items yet. Add something that's expiring soon.
       </div>
     );
@@ -179,7 +179,7 @@ export default function ItemList({ items, onEdit, onDelete, loading, align = 'ce
   const alignMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
 
   return (
-    <div className="tower" key={animKey} style={{ alignItems: alignMap[align] || 'center' }}>
+    <div className="spire" key={animKey} style={{ alignItems: alignMap[align] || 'center' }}>
       {visible.map((item, i) => {
         const days = daysUntil(item.expiry_date);
         const color = urgencyColor(days);
@@ -190,7 +190,7 @@ export default function ItemList({ items, onEdit, onDelete, loading, align = 'ce
 
         if (editing && item.id === editing.id) {
           return (
-            <div key={item.id} className="tower-row" style={{ width: `${widthPct}%` }}>
+            <div key={item.id} className="spire-row" style={{ width: `${widthPct}%` }}>
               <ItemForm initial={editing} onSave={onSave} onCancel={onCancel} inline />
             </div>
           );
@@ -213,7 +213,7 @@ export default function ItemList({ items, onEdit, onDelete, loading, align = 'ce
         );
       })}
       {hasMore && (
-        <button className="tower-show-more" onClick={() => setVisibleCount(v => v + PAGE_SIZE)}>
+        <button className="spire-show-more" onClick={() => setVisibleCount(v => v + PAGE_SIZE)}>
           Show more ({count - visibleCount} remaining)
         </button>
       )}

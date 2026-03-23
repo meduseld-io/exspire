@@ -24,7 +24,7 @@ function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, th
   const [email, setEmail] = useState(settings.email || user?.email || '');
   const [pushEnabled, setPushEnabled] = useState(settings.pushEnabled || false);
   const [pushLoading, setPushLoading] = useState(false);
-  const [towerAlign, setTowerAlign] = useState(settings.towerAlign || 'center');
+  const [spireAlign, setTowerAlign] = useState(settings.spireAlign || 'center');
   const [showRecurring, setShowRecurring] = useState(settings.showRecurring ?? false);
   // Change password
   const [showChangePw, setShowChangePw] = useState(false);
@@ -117,7 +117,7 @@ function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, th
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({ ...settings, email, pushEnabled, towerAlign, showRecurring });
+    onSave({ ...settings, email, pushEnabled, spireAlign, showRecurring });
   };
 
   return (
@@ -156,7 +156,7 @@ function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, th
                 <label className="settings-label">📐 Tower alignment</label>
                 <div className="align-toggle">
                   {['left', 'center', 'right'].map(a => (
-                    <button key={a} type="button" className={`align-btn ${towerAlign === a ? 'align-btn--active' : ''}`} onClick={() => setTowerAlign(a)}>
+                    <button key={a} type="button" className={`align-btn ${spireAlign === a ? 'align-btn--active' : ''}`} onClick={() => setTowerAlign(a)}>
                       {a === 'left' ? '◧' : a === 'center' ? '◫' : '◨'}
                     </button>
                   ))}
@@ -174,7 +174,7 @@ function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, th
                   {showRecurring ? 'On' : 'Off'}
                 </button>
               </div>
-              <span className="settings-hint">When off, recurring items are hidden from the tower</span>
+              <span className="settings-hint">When off, recurring items are hidden from the spire</span>
             </div>
           </div>
 
@@ -534,7 +534,7 @@ export default function App() {
         </>
       )}
 
-      <ItemList items={filteredItems} onEdit={handleEdit} onDelete={handleDeleteRequest} loading={itemsLoading} align={settings.towerAlign || 'center'} editing={editing} onSave={handleSave} onCancel={handleCancel} />
+      <ItemList items={filteredItems} onEdit={handleEdit} onDelete={handleDeleteRequest} loading={itemsLoading} align={settings.spireAlign || 'center'} editing={editing} onSave={handleSave} onCancel={handleCancel} />
 
       <footer className="app-footer">
         <p>&copy; {new Date().getFullYear()} <a href="https://github.com/meduseld-io" target="_blank" rel="noopener noreferrer">meduseld.io</a></p>
