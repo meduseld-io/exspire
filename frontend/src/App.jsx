@@ -391,9 +391,21 @@ export default function App() {
       {!user.emailVerified && (
         <div className="verify-banner">
           <span>📧 Please verify your email address.</span>
-          <button className="btn-test" onClick={async () => {
-            try { await sendVerification(); addToast('Verification email sent'); }
-            catch (err) { console.error('Failed to send verification email:', err); addToast(err.message, 'error'); }
+          <button className="btn-test" id="verify-btn" onClick={async (e) => {
+            const btn = e.currentTarget;
+            btn.disabled = true;
+            btn.textContent = 'Sending…';
+            try {
+              await sendVerification();
+              addToast('Verification email sent — check your inbox');
+              btn.textContent = 'Sent ✓';
+              setTimeout(() => { btn.textContent = 'Resend'; btn.disabled = false; }, 5000);
+            } catch (err) {
+              console.error('Failed to send verification email:', err);
+              addToast(err.message, 'error');
+              btn.textContent = 'Send verification';
+              btn.disabled = false;
+            }
           }}>Send verification</button>
         </div>
       )}
