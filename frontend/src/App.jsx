@@ -476,10 +476,11 @@ export default function App() {
               ) : (
                 <button className="btn-icon" onClick={() => setSearchOpen(true)}>⌕</button>
               )}
-              <button className="btn-test" onClick={handleTestNotification} disabled={testSending}>
-                {testSending ? 'Sending…' : '📧 Test'}
-              </button>
-              <button className="btn-add" onClick={() => { setEditing(null); setShowForm(true); }}>+</button>
+              {user?.isAdmin && (
+                <button className="btn-test" onClick={handleTestNotification} disabled={testSending}>
+                  {testSending ? 'Sending…' : '📧 Test'}
+                </button>
+              )}
             </>
           )}
           <div className="profile-wrapper" ref={profileRef}>
@@ -551,6 +552,10 @@ export default function App() {
         <p>&copy; {new Date().getFullYear()} <a href="https://github.com/meduseld-io" target="_blank" rel="noopener noreferrer">meduseld.io</a></p>
       </footer>
     </div>
+
+    {!showForm && !showAdmin && (
+      <button className="btn-fab" onClick={() => { setEditing(null); setShowForm(true); }} aria-label="Add item">+</button>
+    )}
 
     {deleteConfirm && (
       <div className="confirm-overlay" onClick={() => setDeleteConfirm(null)}>
