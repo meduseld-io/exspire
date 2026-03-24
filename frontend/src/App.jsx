@@ -259,6 +259,8 @@ export default function App() {
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [testSending, setTestSending] = useState(false);
+  const [testDropdownOpen, setTestDropdownOpen] = useState(false);
+  const testDropdownRef = useRef(null);
   const [filter, setFilter] = useState('all');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -297,6 +299,16 @@ export default function App() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [profileOpen]);
+
+  // Close test dropdown on outside click
+  useEffect(() => {
+    if (!testDropdownOpen) return;
+    const handleClick = (e) => {
+      if (testDropdownRef.current && !testDropdownRef.current.contains(e.target)) setTestDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [testDropdownOpen]);
 
   const addToast = useCallback((message, type = 'success') => {
     const id = Date.now();
@@ -392,8 +404,17 @@ export default function App() {
 
   const handleTestNotification = async () => {
     setTestSending(true);
-    try { await sendTestNotification('dylan_martin@mail.com'); addToast('Test email sent'); }
+    setTestDropdownOpen(false);
+    try { await sendTestNotification(settings.email || user?.email); addToast('Test email sent'); }
     catch (err) { console.error('Failed to send test notification:', err); addToast(err.message, 'error'); }
+    finally { setTestSending(false); }
+  };
+
+  const handleTestPush = async () => {
+    setTestSending(true);
+    setTestDropdownOpen(false);
+    try { await testPush(); addToast('Test push sent'); }
+    catch (err) { console.error('Failed to send test push:', err); addToast(err.message, 'error'); }
     finally { setTestSending(false); }
   };
 
@@ -477,9 +498,17 @@ export default function App() {
                 <button className="btn-icon" onClick={() => setSearchOpen(true)}>⌕</button>
               )}
               {user?.isAdmin && (
-                <button className="btn-test" onClick={handleTestNotification} disabled={testSending}>
-                  {testSending ? 'Sending…' : '📧 Test'}
-                </button>
+                <div className="profile-wrapper" ref={testDropdownRef}>
+                  <button className="btn-test" onClick={() => setTestDropdownOpen(!testDropdownOpen)} disabled={testSending}>
+                    {testSending ? '…' : '🧪 Test'}
+                  </button>
+                  {testDropdownOpen && (
+                    <div className="profile-dropdown">
+                      <button className="profile-dropdown-item" onClick={handleTestNotification}>📧 Test Email</button>
+                      <button className="profile-dropdown-item" onClick={handleTestPush}>🔔 Test Push</button>
+                    </div>
+                  )}
+                </div>
               )}
             </>
           )}
