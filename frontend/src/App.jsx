@@ -3,6 +3,7 @@ import { fetchItems, createItem, updateItem, deleteItem, sendTestNotification, g
 import ItemForm from './ItemForm.jsx';
 import ItemList, { categoryColors } from './ItemList.jsx';
 import AuthPage from './AuthPage.jsx';
+import AdminPanel from './AdminPanel.jsx';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -265,6 +266,7 @@ export default function App() {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
   const profileRef = useRef(null);
   const [theme, setTheme] = useState(getTheme);
   const [settings, setSettings] = useState(() => {
@@ -464,7 +466,7 @@ export default function App() {
           <span className="app-title">ExSpire</span>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          {!showForm && (
+          {!showForm && !showAdmin && (
             <>
               {searchOpen ? (
                 <div className="search-inline">
@@ -491,6 +493,11 @@ export default function App() {
                   <span className="profile-dropdown-email">{user?.email}</span>
                 </div>
                 <div className="profile-dropdown-divider" />
+                {user?.isAdmin && (
+                  <button className="profile-dropdown-item" onClick={() => { setProfileOpen(false); setShowAdmin(true); }}>
+                    🛡️ Admin Panel
+                  </button>
+                )}
                 <button className="profile-dropdown-item" onClick={() => { setProfileOpen(false); setShowSettings(true); }}>
                   ⚙️ Settings
                 </button>
@@ -505,7 +512,11 @@ export default function App() {
 
       {showForm && <ItemForm initial={editing} onSave={handleSave} onCancel={handleCancel} />}
 
-      {!showForm && (
+      {showAdmin && !showForm && (
+        <AdminPanel onBack={() => setShowAdmin(false)} />
+      )}
+
+      {!showForm && !showAdmin && (
         <>
           <div className="filter-bar filter-bar--desktop">
             <button className={`filter-chip ${filter === 'all' ? 'filter-chip--active' : ''}`} onClick={() => setFilter('all')}>
@@ -534,7 +545,7 @@ export default function App() {
         </>
       )}
 
-      <ItemList items={filteredItems} onEdit={handleEdit} onDelete={handleDeleteRequest} loading={itemsLoading} align={settings.spireAlign || 'center'} editing={editing} onSave={handleSave} onCancel={handleCancel} />
+      {!showAdmin && <ItemList items={filteredItems} onEdit={handleEdit} onDelete={handleDeleteRequest} loading={itemsLoading} align={settings.spireAlign || 'center'} editing={editing} onSave={handleSave} onCancel={handleCancel} />}
 
       <footer className="app-footer">
         <p>&copy; {new Date().getFullYear()} <a href="https://github.com/meduseld-io" target="_blank" rel="noopener noreferrer">meduseld.io</a></p>

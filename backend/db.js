@@ -73,6 +73,7 @@ export async function initDb() {
   try { db.run('ALTER TABLE items ADD COLUMN user_id INTEGER'); } catch (e) { /* column exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* column exists */ }
   try { db.run("ALTER TABLE items ADD COLUMN recurrence TEXT NOT NULL DEFAULT 'none'"); } catch (e) { /* column exists */ }
+  try { db.run('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* column exists */ }
   save();
   return db;
 }

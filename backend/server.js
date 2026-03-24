@@ -39,7 +39,7 @@ function validate(req, res, next) {
 }
 
 function signToken(user) {
-  return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+  return jwt.sign({ id: user.id, email: user.email, isAdmin: !!user.is_admin }, JWT_SECRET, { expiresIn: '30d' });
 }
 
 function authMiddleware(req, res, next) {
@@ -53,6 +53,12 @@ function authMiddleware(req, res, next) {
     console.error('JWT verification failed:', err);
     return res.status(401).json({ error: 'Invalid token' });
   }
+}
+
+function adminMiddleware(req, res, next) {
+  const user = get('SELECT is_admin FROM users WHERE id = ?', [req.userId]);
+  if (!user || !user.is_admin) return res.status(403).json({ error: 'Admin access required' });
+  next();
 }
 
 // --- Auth routes ---
@@ -72,7 +78,7 @@ app.post('/api/auth/signup', authLimiter,
     const hash = await bcrypt.hash(password, 12);
     const result = run('INSERT INTO users (email, password_hash, display_name) VALUES (?, ?, ?)', [email.toLowerCase(), hash, displayName || null]);
     const user = get('SELECT id, email, display_name, email_verified FROM users WHERE id = ?', [result.lastId]);
-    res.status(201).json({ token: signToken(user), user: { id: user.id, email: user.email, displayName: user.display_name, emailVerified: !!user.email_verified } });
+    res.status(201).json({ token: signToken(user), user: { id: user.id, email: user.email, displayName: user.display_name, emailVerified: !!user.email_verified, isAdmin: false } });
   } catch (err) {
     console.error('Signup failed:', err);
     res.status(500).json({ error: 'Signup failed' });
@@ -92,7 +98,7 @@ app.post('/api/auth/login', authLimiter,
   try {
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
-    res.json({ token: signToken(user), user: { id: user.id, email: user.email, displayName: user.display_name, emailVerified: !!user.email_verified } });
+    res.json({ token: signToken(user), user: { id: user.id, email: user.email, displayName: user.display_name, emailVerified: !!user.email_verified, isAdmin: !!user.is_admin } });
   } catch (err) {
     console.error('Login failed:', err);
     res.status(500).json({ error: 'Login failed' });
@@ -138,9 +144,9 @@ function buildAuthEmail({ heading, body, ctaText, ctaUrl }) {
 }
 
 app.get('/api/auth/me', authMiddleware, (req, res) => {
-  const user = get('SELECT id, email, display_name, email_verified FROM users WHERE id = ?', [req.userId]);
+  const user = get('SELECT id, email, display_name, email_verified, is_admin FROM users WHERE id = ?', [req.userId]);
   if (!user) return res.status(404).json({ error: 'User not found' });
-  res.json({ id: user.id, email: user.email, displayName: user.display_name, emailVerified: !!user.email_verified });
+  res.json({ id: user.id, email: user.email, displayName: user.display_name, emailVerified: !!user.email_verified, isAdmin: !!user.is_admin });
 });
 
 // --- Email verification ---
@@ -296,6 +302,31 @@ app.delete('/api/auth/account', authMiddleware,
     console.error('Delete account failed:', err);
     res.status(500).json({ error: 'Failed to delete account' });
   }
+});
+
+// --- Admin routes ---
+
+app.get('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
+  const users = all(`
+    SELECT u.id, u.email, u.display_name, u.email_verified, u.is_admin, u.created_at,
+      (SELECT COUNT(*) FROM items WHERE user_id = u.id) as item_count
+    FROM users u ORDER BY u.created_at DESC
+  `);
+  res.json(users.map(u => ({
+    id: u.id, email: u.email, displayName: u.display_name,
+    emailVerified: !!u.email_verified, isAdmin: !!u.is_admin,
+    createdAt: u.created_at, itemCount: u.item_count,
+  })));
+});
+
+app.get('/api/admin/users/:id/items', authMiddleware, adminMiddleware,
+  param('id').isInt().withMessage('Invalid user ID').toInt(),
+  validate,
+  (req, res) => {
+  const user = get('SELECT id FROM users WHERE id = ?', [req.params.id]);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const items = all('SELECT * FROM items WHERE user_id = ? ORDER BY expiry_date ASC', [req.params.id]);
+  res.json(items);
 });
 
 // Configure web push if VAPID keys are set

@@ -177,3 +177,17 @@ export async function verifyEmail(token) {
   if (!res.ok) throw new Error(data.error || 'Verification failed');
   return data;
 }
+
+// --- Admin API ---
+
+export async function fetchAdminUsers() {
+  const res = await fetch(`${BASE}/admin/users`, { headers: authHeaders() });
+  if (!res.ok) throw new Error('Failed to fetch users');
+  return res.json();
+}
+
+export async function fetchAdminUserItems(userId) {
+  const res = await fetch(`${BASE}/admin/users/${userId}/items`, { headers: authHeaders() });
+  if (!res.ok) throw new Error('Failed to fetch user items');
+  return res.json();
+}
