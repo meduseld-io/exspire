@@ -210,7 +210,7 @@ input:focus, select:focus {
   border: 1px solid var(--border);
   padding: 0.25rem 0.65rem;
   font-size: 0.75rem;
-  text-transform: capitalize;
+  text-transform: uppercase;
   letter-spacing: 0.03em;
   font-weight: 600;
 }
@@ -350,7 +350,7 @@ input:focus, select:focus {
   font-size: 0.65rem;
   padding: 0.05rem 0.45rem;
   border-radius: 999px;
-  text-transform: capitalize;
+  text-transform: uppercase;
   letter-spacing: 0.03em;
   font-weight: 600;
   white-space: nowrap;
@@ -1099,7 +1099,7 @@ input:focus, select:focus {
   font-size: 0.6rem;
   padding: 0.05rem 0.4rem;
   border-radius: 999px;
-  text-transform: capitalize;
+  text-transform: uppercase;
   letter-spacing: 0.03em;
   font-weight: 600;
   white-space: nowrap;
