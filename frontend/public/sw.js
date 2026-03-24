@@ -1,4 +1,4 @@
-const CACHE_NAME = 'exspire-v1';
+const CACHE_NAME = 'exspire-v2';
 const STATIC_ASSETS = ['/', '/logo.png', '/favicon.ico'];
 
 self.addEventListener('install', (e) => {
@@ -18,10 +18,18 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  // Network-first for API calls, cache-first for static assets
+  // Skip API calls entirely — let them go straight to network
   if (e.request.url.includes('/api/')) return;
+
+  // Network-first: try network, fall back to cache (offline support)
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    fetch(e.request)
+      .then(response => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+        return response;
+      })
+      .catch(() => caches.match(e.request))
   );
 });
 
