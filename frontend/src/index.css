@@ -319,7 +319,8 @@ input:focus, select:focus {
 .spire-block:hover {
   background: var(--surface-hover);
 }
-.spire-block--expired {
+.spire-block--expired .spire-block-left,
+.spire-block--expired .spire-block-right {
   opacity: 0.5;
 }
 
