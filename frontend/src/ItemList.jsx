@@ -31,6 +31,14 @@ function urgencyLabel(days) {
   if (days < 0) return 'ExSpired';
   if (days === 0) return 'Today';
   if (days === 1) return 'Tomorrow';
+  if (days >= 183) {
+    const years = Math.floor(days / 365);
+    const remainingAfterYears = days % 365;
+    const months = Math.floor(remainingAfterYears / 30);
+    const d = remainingAfterYears % 30;
+    if (years > 0) return `${years}y ${months}m ${d}d`;
+    return `${months}m ${d}d`;
+  }
   return `${days}d`;
 }
 
