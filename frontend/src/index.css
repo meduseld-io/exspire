@@ -972,6 +972,21 @@ input:focus, select:focus {
   white-space: nowrap;
 }
 
+/* Install PWA banner */
+.install-banner {
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
 /* Loading spinner */
 .loading-screen {
   min-height: 100vh;

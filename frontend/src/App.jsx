@@ -269,6 +269,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
   const profileRef = useRef(null);
   const [theme, setTheme] = useState(getTheme);
   const [settings, setSettings] = useState(() => {
@@ -280,6 +281,15 @@ export default function App() {
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const pullRef = useRef({ startY: 0, pulling: false });
+
+  // Show install banner on mobile web (not standalone PWA)
+  useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    const dismissed = localStorage.getItem('exspire_install_dismissed');
+    if (!isStandalone && !dismissed && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+      setShowInstallBanner(true);
+    }
+  }, []);
 
   // Apply saved theme only when logged in; auth page always uses dark
   useEffect(() => {
@@ -480,6 +490,13 @@ export default function App() {
               btn.disabled = false;
             }
           }}>Send verification</button>
+        </div>
+      )}
+
+      {showInstallBanner && (
+        <div className="install-banner">
+          <span>📲 Add ExSpire to your homescreen for the best experience</span>
+          <button className="btn-icon" onClick={() => { setShowInstallBanner(false); localStorage.setItem('exspire_install_dismissed', '1'); }}>✕</button>
         </div>
       )}
       <header className="app-header">
