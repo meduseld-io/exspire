@@ -363,7 +363,15 @@ app.get('/api/items', authMiddleware, (req, res) => {
 app.post('/api/items', authMiddleware,
   body('name').notEmpty().withMessage('Name is required').trim().escape(),
   body('category').optional().trim().escape(),
-  body('expiry_date').isISO8601().withMessage('Valid date is required (YYYY-MM-DD)').toDate(),
+  body('expiry_date').isISO8601().withMessage('Valid date is required (YYYY-MM-DD)').toDate()
+    .custom((value) => {
+      const d = new Date(value);
+      const year = d.getFullYear();
+      if (year < 2000 || year > 2100) throw new Error('Year must be between 2000 and 2100');
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      if (d < today) throw new Error('Expiry date cannot be in the past');
+      return true;
+    }),
   body('notify_email').optional({ values: 'falsy' }).isEmail().withMessage('Valid email required for notifications').normalizeEmail(),
   body('notify_push').optional().isBoolean().toBoolean(),
   body('notify_days_before').optional().isInt({ min: 0, max: 365 }).withMessage('Notify days must be 0-365').toInt(),
@@ -386,7 +394,15 @@ app.put('/api/items/:id', authMiddleware,
   param('id').isInt().withMessage('Invalid item ID').toInt(),
   body('name').optional().trim().escape(),
   body('category').optional().trim().escape(),
-  body('expiry_date').optional().isISO8601().withMessage('Valid date is required (YYYY-MM-DD)'),
+  body('expiry_date').optional().isISO8601().withMessage('Valid date is required (YYYY-MM-DD)')
+    .custom((value) => {
+      const d = new Date(value);
+      const year = d.getFullYear();
+      if (year < 2000 || year > 2100) throw new Error('Year must be between 2000 and 2100');
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      if (d < today) throw new Error('Expiry date cannot be in the past');
+      return true;
+    }),
   body('notify_email').optional({ values: 'falsy' }).isEmail().withMessage('Valid email required').normalizeEmail(),
   body('notify_push').optional().isBoolean().toBoolean(),
   body('notify_days_before').optional().isInt({ min: 0, max: 365 }).withMessage('Notify days must be 0-365').toInt(),

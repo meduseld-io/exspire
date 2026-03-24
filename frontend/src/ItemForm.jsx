@@ -26,11 +26,24 @@ export default function ItemForm({ initial, onSave, onCancel, inline }) {
     notify_days_before: initial?.notify_days_before ?? 7,
     recurrence: initial?.recurrence || 'none',
   });
+  const [dateError, setDateError] = useState('');
 
   const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
 
+  const today = new Date().toISOString().split('T')[0];
+
+  function validateExpiryDate(dateStr) {
+    if (!dateStr) return 'Expiry date is required';
+    const year = parseInt(dateStr.split('-')[0], 10);
+    if (isNaN(year) || year < 2000 || year > 2100) return 'Year must be between 2000 and 2100';
+    if (dateStr < today) return 'Expiry date cannot be in the past';
+    return '';
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    const err = validateExpiryDate(form.expiry_date);
+    if (err) { setDateError(err); return; }
     const { customCategory, notify_type, ...data } = form;
     if (data.category === '__custom__') {
       data.category = customCategory.trim().toLowerCase() || 'other';
@@ -75,7 +88,9 @@ export default function ItemForm({ initial, onSave, onCancel, inline }) {
       <div style={rowStyle}>
         <div style={fieldStyle}>
           <label style={labelStyle}>Expiry Date</label>
-          <input required type="date" value={form.expiry_date} onChange={e => set('expiry_date', e.target.value)} />
+          <input required type="date" min={today} max="2100-12-31" value={form.expiry_date}
+            onChange={e => { set('expiry_date', e.target.value); setDateError(''); }} />
+          {dateError && <span style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>{dateError}</span>}
         </div>
         <div style={fieldStyle}>
           <label style={labelStyle}>Recurring</label>
