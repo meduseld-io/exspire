@@ -3,8 +3,10 @@ import { fetchAdminUsers, fetchAdminUserItems } from './api.js';
 import { categoryColors } from './ItemList.jsx';
 
 function daysUntil(dateStr) {
-  const now = new Date(); now.setHours(0, 0, 0, 0);
-  const target = new Date(dateStr); target.setHours(0, 0, 0, 0);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr);
+  target.setHours(0, 0, 0, 0);
   return Math.ceil((target - now) / (1000 * 60 * 60 * 24));
 }
 
@@ -15,9 +17,17 @@ function urgencyColor(days) {
   return 'var(--success)';
 }
 
+function urgencyLabel(days) {
+  if (days < 0) return 'ExSpired';
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Tomorrow';
+  return `${days}d`;
+}
+
 export default function AdminPanel({ onBack }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [expandedUser, setExpandedUser] = useState(null);
   const [userItems, setUserItems] = useState({});
   const [itemsLoading, setItemsLoading] = useState({});
@@ -28,10 +38,12 @@ export default function AdminPanel({ onBack }) {
 
   const loadUsers = async () => {
     setLoading(true);
+    setError(null);
     try {
       setUsers(await fetchAdminUsers());
     } catch (err) {
       console.error('Failed to load admin users:', err);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -59,27 +71,34 @@ export default function AdminPanel({ onBack }) {
   return (
     <div className="admin-panel">
       <div className="admin-header">
-        <button className="btn-test" onClick={onBack}>← Back</button>
-        <h2 className="admin-title">Admin Panel</h2>
+        <button className="btn-icon" onClick={onBack}>←</button>
+        <span className="admin-title">Admin Panel</span>
         <span className="admin-badge">{users.length} users</span>
       </div>
 
-      {loading ? (
-        <div className="spire-empty"><div className="spinner" style={{ margin: '0 auto' }} /></div>
-      ) : (
+      {loading && (
+        <div className="spire-empty">
+          <div className="spinner" style={{ margin: '0 auto' }} />
+        </div>
+      )}
+
+      {error && <div className="error-banner">{error}</div>}
+
+      {!loading && !error && (
         <div className="admin-users">
           {users.map(u => (
             <div key={u.id} className="admin-user-card">
               <div className="admin-user-row" onClick={() => toggleUser(u.id)}>
-                <span className="profile-avatar" style={{ fontSize: '0.7rem', width: 28, height: 28 }}>
-                  {u.displayName?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
-                </span>
+                <span className="profile-avatar">{u.displayName?.[0]?.toUpperCase() || u.email[0].toUpperCase()}</span>
                 <div className="admin-user-info">
                   <span className="admin-user-name">
                     {u.displayName || u.email}
                     {u.isAdmin && <span className="admin-role-badge">Admin</span>}
                   </span>
-                  <span className="admin-user-meta">{u.email} · {u.itemCount} items</span>
+                  <span className="admin-user-meta">
+                    {u.email} · {u.itemCount} item{u.itemCount !== 1 ? 's' : ''}
+                    {u.emailVerified ? ' · ✓ verified' : ''}
+                  </span>
                 </div>
                 <span className="admin-expand">{expandedUser === u.id ? '▾' : '▸'}</span>
               </div>
@@ -89,18 +108,17 @@ export default function AdminPanel({ onBack }) {
                   {itemsLoading[u.id] ? (
                     <div className="spinner spinner--sm" style={{ margin: '0.5rem auto' }} />
                   ) : !userItems[u.id]?.length ? (
-                    <p className="admin-no-items">No items</p>
+                    <span className="admin-no-items">No items</span>
                   ) : (
                     userItems[u.id].map(item => {
                       const days = daysUntil(item.expiry_date);
-                      const color = urgencyColor(days);
                       const catColor = categoryColors[item.category] || categoryColors.other;
                       return (
                         <div key={item.id} className="admin-item">
                           <span className="admin-item-name">{item.name}</span>
                           <span className="admin-item-cat" style={{ background: catColor + '22', color: catColor }}>{item.category}</span>
-                          <span className="admin-item-date">{new Date(item.expiry_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                          <span className="admin-item-urgency" style={{ color }}>{days < 0 ? 'Expired' : days === 0 ? 'Today' : `${days}d`}</span>
+                          <span className="admin-item-date">{new Date(item.expiry_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                          <span className="admin-item-urgency" style={{ color: urgencyColor(days) }}>{urgencyLabel(days)}</span>
                         </div>
                       );
                     })
