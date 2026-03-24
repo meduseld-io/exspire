@@ -447,18 +447,19 @@ export default function App() {
 
   return (
     <>
+    {/* Pull-to-refresh indicator — above app container */}
+    {(pullDistance > 0 || refreshing) && (
+      <div className="pull-indicator" style={{ height: pullDistance }}>
+        <div className={`spinner spinner--sm ${refreshing ? '' : 'spinner--paused'}`} style={{ opacity: pullDistance / 50 }} />
+      </div>
+    )}
     <div
       className="app-container auth-transition auth-transition--in"
       onTouchStart={handlePullStart}
       onTouchMove={handlePullMove}
       onTouchEnd={handlePullEnd}
     >
-      {/* Pull-to-refresh indicator */}
-      {(pullDistance > 0 || refreshing) && (
-        <div className="pull-indicator" style={{ height: pullDistance }}>
-          <div className={`spinner spinner--sm ${refreshing ? '' : 'spinner--paused'}`} style={{ opacity: pullDistance / 50 }} />
-        </div>
-      )}
+      {/* Pull-to-refresh indicator removed from here */}
 
       {!user.emailVerified && (
         <div className="verify-banner">
