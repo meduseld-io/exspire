@@ -56,8 +56,6 @@ function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, 
   const handleTouchStart = (e) => {
     const touch = e.touches[0];
     touchRef.current = { startX: touch.clientX, startY: touch.clientY, swiping: false };
-    setSwiped(false);
-    setSwipeOffset(0);
   };
 
   const handleTouchMove = (e) => {
@@ -69,25 +67,33 @@ function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, 
     if (!touchRef.current.swiping && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
       touchRef.current.swiping = true;
     }
-    if (touchRef.current.swiping && dx < 0) {
+    if (touchRef.current.swiping) {
       e.preventDefault();
-      setSwipeOffset(Math.max(dx, -120));
+      // If already open, allow swiping right to close
+      const base = swiped ? -120 : 0;
+      const raw = base + dx;
+      setSwipeOffset(Math.max(Math.min(raw, 0), -120));
     }
   };
 
   const handleTouchEnd = () => {
-    if (swipeOffset < -SWIPE_THRESHOLD) {
-      setSwiped(true);
-      setSwipeOffset(-120);
-    } else {
-      setSwipeOffset(0);
+    if (touchRef.current.swiping) {
+      if (swipeOffset < -SWIPE_THRESHOLD) {
+        setSwiped(true);
+        setSwipeOffset(-120);
+        setExpandedId(item.id);
+      } else {
+        setSwiped(false);
+        setSwipeOffset(0);
+        if (expandedId === item.id) setExpandedId(null);
+      }
     }
     touchRef.current.swiping = false;
   };
 
   // Close swipe when another item is swiped
   useEffect(() => {
-    if (expandedId !== item.id && swiped) {
+    if (expandedId !== null && expandedId !== item.id && swiped) {
       setSwiped(false);
       setSwipeOffset(0);
     }
@@ -98,6 +104,7 @@ function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, 
     if (swiped) {
       setSwiped(false);
       setSwipeOffset(0);
+      setExpandedId(null);
     } else {
       setExpandedId(expandedId === item.id ? null : item.id);
     }
