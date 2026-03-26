@@ -67,10 +67,12 @@ function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, 
       // Once locked to vertical scroll, don't hijack
       if (touchRef.current.locked) return;
 
-      // Decide direction on first significant movement
-      if (!touchRef.current.swiping && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+      // Decide direction on first significant movement (tight 5px dead zone)
+      if (!touchRef.current.swiping && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
         if (Math.abs(dx) > Math.abs(dy)) {
           touchRef.current.swiping = true;
+          // Prevent vertical bounce on the very first horizontal frame
+          e.preventDefault();
         } else {
           touchRef.current.locked = true;
           return;

@@ -285,6 +285,7 @@ input:focus, select:focus {
   overflow: hidden;
   border-radius: var(--radius);
   touch-action: pan-y;
+  overscroll-behavior: none;
 }
 
 .swipe-actions {
