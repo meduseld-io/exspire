@@ -475,7 +475,7 @@ export default function App() {
     {/* Pull-to-refresh indicator — above app container */}
     {(pullDistance > 0 || refreshing) && (
       <div className="pull-indicator" style={{ height: pullDistance }}>
-        <div className={`spinner spinner--sm ${refreshing ? '' : 'spinner--paused'}`} style={{ opacity: pullDistance / 80 }} />
+        <div className={`spinner spinner--sm ${refreshing ? '' : 'spinner--paused'}`} style={{ opacity: Math.min(pullDistance / 50, 1) }} />
       </div>
     )}
     <div

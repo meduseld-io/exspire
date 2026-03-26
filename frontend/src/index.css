@@ -933,6 +933,12 @@ input:focus, select:focus {
   overflow: hidden;
   transition: height 0.2s ease;
 }
+.pull-indicator .spinner--sm {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--accent);
+}
 .spinner--sm {
   width: 24px;
   height: 24px;
