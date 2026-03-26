@@ -49,31 +49,49 @@ const SWIPE_THRESHOLD = 60;
 const recurrenceLabels = { weekly: '🔄 Weekly', monthly: '🔄 Monthly', yearly: '🔄 Yearly' };
 
 function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, onDelete, expandedId, setExpandedId, exiting }) {
-  const touchRef = useRef({ startX: 0, startY: 0, swiping: false });
+  const touchRef = useRef({ startX: 0, startY: 0, swiping: false, locked: false });
+  const blockRef = useRef(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [swiped, setSwiped] = useState(false);
 
+  // Attach non-passive touchmove so preventDefault() actually works
+  useEffect(() => {
+    const el = blockRef.current;
+    if (!el) return;
+
+    const onTouchMove = (e) => {
+      const touch = e.touches[0];
+      const dx = touch.clientX - touchRef.current.startX;
+      const dy = touch.clientY - touchRef.current.startY;
+
+      // Once locked to vertical scroll, don't hijack
+      if (touchRef.current.locked) return;
+
+      // Decide direction on first significant movement
+      if (!touchRef.current.swiping && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+        if (Math.abs(dx) > Math.abs(dy)) {
+          touchRef.current.swiping = true;
+        } else {
+          touchRef.current.locked = true;
+          return;
+        }
+      }
+
+      if (touchRef.current.swiping) {
+        e.preventDefault();
+        const base = swiped ? -120 : 0;
+        const raw = base + dx;
+        setSwipeOffset(Math.max(Math.min(raw, 0), -120));
+      }
+    };
+
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    return () => el.removeEventListener('touchmove', onTouchMove);
+  }, [swiped]);
+
   const handleTouchStart = (e) => {
     const touch = e.touches[0];
-    touchRef.current = { startX: touch.clientX, startY: touch.clientY, swiping: false };
-  };
-
-  const handleTouchMove = (e) => {
-    const touch = e.touches[0];
-    const dx = touch.clientX - touchRef.current.startX;
-    const dy = touch.clientY - touchRef.current.startY;
-
-    // Only swipe left, and only if horizontal movement dominates
-    if (!touchRef.current.swiping && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
-      touchRef.current.swiping = true;
-    }
-    if (touchRef.current.swiping) {
-      e.preventDefault();
-      // If already open, allow swiping right to close
-      const base = swiped ? -120 : 0;
-      const raw = base + dx;
-      setSwipeOffset(Math.max(Math.min(raw, 0), -120));
-    }
+    touchRef.current = { startX: touch.clientX, startY: touch.clientY, swiping: false, locked: false };
   };
 
   const handleTouchEnd = () => {
@@ -89,6 +107,7 @@ function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, 
       }
     }
     touchRef.current.swiping = false;
+    touchRef.current.locked = false;
   };
 
   // Close swipe when another item is swiped
@@ -118,11 +137,11 @@ function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, 
           <button className="swipe-btn swipe-btn--delete" onClick={() => onDelete(item.id)} aria-label={`Delete ${item.name}`}>🗑️</button>
         </div>
         <div
+          ref={blockRef}
           className={`spire-block ${days < 0 ? 'spire-block--expired' : ''} ${expandedId === item.id ? 'spire-block--expanded' : ''}`}
           style={{ borderLeftColor: color, transform: `translateX(${swipeOffset}px)`, transition: touchRef.current.swiping ? 'none' : 'transform 0.2s ease' }}
           onClick={handleSwipeOpen}
           onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
           <div className="spire-block-left">
