@@ -404,9 +404,14 @@ export default function App() {
 
   const handleDeleteConfirm = async () => {
     if (!deleteConfirm) return;
-    try { await deleteItem(deleteConfirm.id); addToast('Item deleted'); load(); }
+    const idToDelete = deleteConfirm.id;
+    setDeleteConfirm(null);
+    try {
+      await deleteItem(idToDelete);
+      addToast('Item deleted');
+      setItems(prev => prev.filter(i => i.id !== idToDelete));
+    }
     catch (err) { console.error('Failed to delete item:', err); addToast('Could not delete item', 'error'); }
-    finally { setDeleteConfirm(null); }
   };
 
   const handleEdit = (item) => { setEditing(item); setShowForm(false); };

@@ -48,7 +48,7 @@ const SWIPE_THRESHOLD = 60;
 
 const recurrenceLabels = { weekly: '🔄 Weekly', monthly: '🔄 Monthly', yearly: '🔄 Yearly' };
 
-function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, onDelete, expandedId, setExpandedId }) {
+function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, onDelete, expandedId, setExpandedId, exiting }) {
   const touchRef = useRef({ startX: 0, startY: 0, swiping: false });
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [swiped, setSwiped] = useState(false);
@@ -111,7 +111,7 @@ function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, 
   };
 
   return (
-    <div key={item.id} className="spire-row spire-row--enter" style={{ width: `${widthPct}%`, animationDelay: `${delay}s` }}>
+    <div key={item.id} className={`spire-row spire-row--enter ${exiting ? 'spire-row--exit' : ''}`} style={{ width: `${widthPct}%`, animationDelay: exiting ? '0s' : `${delay}s` }}>
       <div className="swipe-container">
         <div className="swipe-actions">
           <button className="swipe-btn swipe-btn--edit" onClick={() => onEdit(item)} aria-label={`Edit ${item.name}`}>✏️</button>
@@ -160,16 +160,30 @@ export default function ItemList({ items, onEdit, onDelete, loading, align = 'ce
   const [expandedId, setExpandedId] = useState(null);
   const [animKey, setAnimKey] = useState(0);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const prevItemsRef = useRef('');
+  const prevItemsRef = useRef(new Set());
+  const [exitingId, setExitingId] = useState(null);
 
-  const itemIds = items.map(i => i.id).join(',');
+  const currentIds = new Set(items.map(i => i.id));
   useEffect(() => {
-    if (prevItemsRef.current !== itemIds) {
-      prevItemsRef.current = itemIds;
+    const prevIds = prevItemsRef.current;
+    // Only replay the full build animation when new items appear (add/reload),
+    // not when items are removed (delete).
+    const hasNewItems = [...currentIds].some(id => !prevIds.has(id));
+    if (hasNewItems) {
       setAnimKey(k => k + 1);
       setVisibleCount(PAGE_SIZE);
     }
-  }, [itemIds]);
+    prevItemsRef.current = currentIds;
+  }, [items]);
+
+  // Wrap onDelete to play exit animation before actually deleting
+  const handleDelete = (id) => {
+    setExitingId(id);
+    setTimeout(() => {
+      setExitingId(null);
+      onDelete(id);
+    }, 250);
+  };
 
   if (loading) {
     return (
@@ -222,9 +236,10 @@ export default function ItemList({ items, onEdit, onDelete, loading, align = 'ce
             widthPct={widthPct}
             delay={delay}
             onEdit={onEdit}
-            onDelete={onDelete}
+            onDelete={handleDelete}
             expandedId={expandedId}
             setExpandedId={setExpandedId}
+            exiting={exitingId === item.id}
           />
         );
       })}
