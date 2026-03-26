@@ -156,12 +156,11 @@ function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, 
 
 const PAGE_SIZE = 21;
 
-export default function ItemList({ items, onEdit, onDelete, loading, align = 'center', editing, onSave, onCancel }) {
+export default function ItemList({ items, onEdit, onDelete, loading, align = 'center', editing, onSave, onCancel, exitingId }) {
   const [expandedId, setExpandedId] = useState(null);
   const [animKey, setAnimKey] = useState(0);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const prevItemsRef = useRef(new Set());
-  const [exitingId, setExitingId] = useState(null);
 
   const currentIds = new Set(items.map(i => i.id));
   useEffect(() => {
@@ -175,15 +174,6 @@ export default function ItemList({ items, onEdit, onDelete, loading, align = 'ce
     }
     prevItemsRef.current = currentIds;
   }, [items]);
-
-  // Wrap onDelete to play exit animation before actually deleting
-  const handleDelete = (id) => {
-    setExitingId(id);
-    setTimeout(() => {
-      setExitingId(null);
-      onDelete(id);
-    }, 250);
-  };
 
   if (loading) {
     return (
@@ -236,7 +226,7 @@ export default function ItemList({ items, onEdit, onDelete, loading, align = 'ce
             widthPct={widthPct}
             delay={delay}
             onEdit={onEdit}
-            onDelete={handleDelete}
+            onDelete={onDelete}
             expandedId={expandedId}
             setExpandedId={setExpandedId}
             exiting={exitingId === item.id}

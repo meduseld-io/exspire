@@ -266,6 +266,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [toasts, setToasts] = useState([]);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [exitingId, setExitingId] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
@@ -406,12 +407,21 @@ export default function App() {
     if (!deleteConfirm) return;
     const idToDelete = deleteConfirm.id;
     setDeleteConfirm(null);
+    setExitingId(idToDelete);
     try {
       await deleteItem(idToDelete);
       addToast('Item deleted');
-      setItems(prev => prev.filter(i => i.id !== idToDelete));
+      // Wait for exit animation to finish before removing from state
+      setTimeout(() => {
+        setExitingId(null);
+        setItems(prev => prev.filter(i => i.id !== idToDelete));
+      }, 250);
     }
-    catch (err) { console.error('Failed to delete item:', err); addToast('Could not delete item', 'error'); }
+    catch (err) {
+      console.error('Failed to delete item:', err);
+      addToast('Could not delete item', 'error');
+      setExitingId(null);
+    }
   };
 
   const handleEdit = (item) => { setEditing(item); setShowForm(false); };
@@ -598,7 +608,7 @@ export default function App() {
         </>
       )}
 
-      {!showAdmin && <ItemList items={filteredItems} onEdit={handleEdit} onDelete={handleDeleteRequest} loading={itemsLoading} align={settings.spireAlign || 'center'} editing={editing} onSave={handleSave} onCancel={handleCancel} />}
+      {!showAdmin && <ItemList items={filteredItems} onEdit={handleEdit} onDelete={handleDeleteRequest} loading={itemsLoading} align={settings.spireAlign || 'center'} editing={editing} onSave={handleSave} onCancel={handleCancel} exitingId={exitingId} />}
 
       <footer className="app-footer">
         <p>&copy; {new Date().getFullYear()} <a href="https://github.com/meduseld-io" target="_blank" rel="noopener noreferrer">meduseld.io</a></p>
