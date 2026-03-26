@@ -49,13 +49,13 @@ const SWIPE_THRESHOLD = 60;
 const recurrenceLabels = { weekly: '🔄 Weekly', monthly: '🔄 Monthly', yearly: '🔄 Yearly' };
 
 function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, onDelete, expandedId, setExpandedId, exiting }) {
-  const touchRef = useRef({ startX: 0, startY: 0, currentY: 0, swiping: false, locked: false });
+  const touchRef = useRef({ startX: 0, startY: 0, swiping: false, locked: false });
   const blockRef = useRef(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [swiped, setSwiped] = useState(false);
 
-  // touch-action: none gives JS full control — no browser scroll bounce.
-  // We manually scroll the page for vertical gestures.
+  // touch-action: pan-y lets the browser handle vertical scrolling natively
+  // (smooth momentum, no bounce). JS only handles horizontal swipe.
   useEffect(() => {
     const el = blockRef.current;
     if (!el) return;
@@ -72,17 +72,12 @@ function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, 
           touchRef.current.swiping = true;
         } else {
           touchRef.current.locked = true;
-          touchRef.current.currentY = touch.clientY;
+          return;
         }
       }
 
-      if (touchRef.current.locked) {
-        // Manually scroll the page since touch-action: none disables native scroll
-        const delta = touchRef.current.currentY - touch.clientY;
-        touchRef.current.currentY = touch.clientY;
-        window.scrollBy(0, delta);
-        return;
-      }
+      // Vertical scroll — let the browser handle it natively
+      if (touchRef.current.locked) return;
 
       if (touchRef.current.swiping) {
         e.preventDefault();
@@ -98,7 +93,7 @@ function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, 
 
   const handleTouchStart = (e) => {
     const touch = e.touches[0];
-    touchRef.current = { startX: touch.clientX, startY: touch.clientY, currentY: touch.clientY, swiping: false, locked: false };
+    touchRef.current = { startX: touch.clientX, startY: touch.clientY, swiping: false, locked: false };
   };
 
   const handleTouchEnd = () => {

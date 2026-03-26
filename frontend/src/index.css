@@ -40,6 +40,7 @@ body {
   line-height: 1.5;
   min-height: 100vh;
   transition: background 0.25s, color 0.25s;
+  overscroll-behavior-y: none;
 }
 
 button {
@@ -284,7 +285,7 @@ input:focus, select:focus {
   position: relative;
   overflow: hidden;
   border-radius: var(--radius);
-  touch-action: none;
+  touch-action: pan-y;
 }
 
 .swipe-actions {
