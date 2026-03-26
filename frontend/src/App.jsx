@@ -373,14 +373,14 @@ export default function App() {
     const dy = e.touches[0].clientY - pullRef.current.startY;
     if (dy > 10 && window.scrollY === 0) {
       pullRef.current.pulling = true;
-      setPullDistance(Math.min(dy * 0.5, 80));
+      setPullDistance(Math.min(dy * 0.4, 100));
     }
   };
 
   const handlePullEnd = async () => {
-    if (pullDistance > 50 && !refreshing) {
+    if (pullDistance > 80 && !refreshing) {
       setRefreshing(true);
-      setPullDistance(50);
+      setPullDistance(60);
       await load();
       setRefreshing(false);
     }
@@ -475,7 +475,7 @@ export default function App() {
     {/* Pull-to-refresh indicator — above app container */}
     {(pullDistance > 0 || refreshing) && (
       <div className="pull-indicator" style={{ height: pullDistance }}>
-        <div className={`spinner spinner--sm ${refreshing ? '' : 'spinner--paused'}`} style={{ opacity: pullDistance / 50 }} />
+        <div className={`spinner spinner--sm ${refreshing ? '' : 'spinner--paused'}`} style={{ opacity: pullDistance / 80 }} />
       </div>
     )}
     <div
