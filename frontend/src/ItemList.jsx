@@ -49,12 +49,13 @@ const SWIPE_THRESHOLD = 60;
 const recurrenceLabels = { weekly: '🔄 Weekly', monthly: '🔄 Monthly', yearly: '🔄 Yearly' };
 
 function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, onDelete, expandedId, setExpandedId, exiting }) {
-  const touchRef = useRef({ startX: 0, startY: 0, swiping: false, locked: false });
+  const touchRef = useRef({ startX: 0, startY: 0, currentY: 0, swiping: false, locked: false });
   const blockRef = useRef(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [swiped, setSwiped] = useState(false);
 
-  // Attach non-passive touchmove so preventDefault() actually works
+  // touch-action: none gives JS full control — no browser scroll bounce.
+  // We manually scroll the page for vertical gestures.
   useEffect(() => {
     const el = blockRef.current;
     if (!el) return;
@@ -64,19 +65,23 @@ function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, 
       const dx = touch.clientX - touchRef.current.startX;
       const dy = touch.clientY - touchRef.current.startY;
 
-      // Once locked to vertical scroll, don't hijack
-      if (touchRef.current.locked) return;
-
-      // Decide direction on first significant movement (tight 5px dead zone)
-      if (!touchRef.current.swiping && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+      // Decide direction on first significant movement
+      if (!touchRef.current.swiping && !touchRef.current.locked) {
+        if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
         if (Math.abs(dx) > Math.abs(dy)) {
           touchRef.current.swiping = true;
-          // Prevent vertical bounce on the very first horizontal frame
-          e.preventDefault();
         } else {
           touchRef.current.locked = true;
-          return;
+          touchRef.current.currentY = touch.clientY;
         }
+      }
+
+      if (touchRef.current.locked) {
+        // Manually scroll the page since touch-action: none disables native scroll
+        const delta = touchRef.current.currentY - touch.clientY;
+        touchRef.current.currentY = touch.clientY;
+        window.scrollBy(0, delta);
+        return;
       }
 
       if (touchRef.current.swiping) {
@@ -93,7 +98,7 @@ function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, 
 
   const handleTouchStart = (e) => {
     const touch = e.touches[0];
-    touchRef.current = { startX: touch.clientX, startY: touch.clientY, swiping: false, locked: false };
+    touchRef.current = { startX: touch.clientX, startY: touch.clientY, currentY: touch.clientY, swiping: false, locked: false };
   };
 
   const handleTouchEnd = () => {
