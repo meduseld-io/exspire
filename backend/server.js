@@ -31,8 +31,6 @@ const apiLimiter = rateLimit({
   message: { error: 'Too many requests, please try again later' },
 });
 
-app.use('/api/', apiLimiter);
-
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5,
@@ -154,7 +152,7 @@ function buildAuthEmail({ heading, body, ctaText, ctaUrl }) {
 </html>`;
 }
 
-app.get('/api/auth/me', authMiddleware, (req, res) => {
+app.get('/api/auth/me', apiLimiter, authMiddleware, (req, res) => {
   const user = get('SELECT id, email, display_name, email_verified, is_admin FROM users WHERE id = ?', [req.userId]);
   if (!user) return res.status(404).json({ error: 'User not found' });
   res.json({ id: user.id, email: user.email, displayName: user.display_name, emailVerified: !!user.email_verified, isAdmin: !!user.is_admin });
@@ -162,7 +160,7 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
 
 // --- Email verification ---
 
-app.post('/api/auth/send-verification', authMiddleware, async (req, res) => {
+app.post('/api/auth/send-verification', apiLimiter, authMiddleware, async (req, res) => {
   const user = get('SELECT * FROM users WHERE id = ?', [req.userId]);
   if (!user) return res.status(404).json({ error: 'User not found' });
   if (user.email_verified) return res.json({ message: 'Already verified' });
@@ -192,6 +190,7 @@ app.post('/api/auth/send-verification', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/auth/verify',
+  apiLimiter,
   body('token').notEmpty().withMessage('Token is required').trim(),
   validate,
   async (req, res) => {
@@ -247,6 +246,7 @@ app.post('/api/auth/forgot-password', authLimiter,
 });
 
 app.post('/api/auth/reset-password',
+  apiLimiter,
   body('token').notEmpty().withMessage('Token is required').trim(),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters').trim(),
   validate,
@@ -269,7 +269,7 @@ app.post('/api/auth/reset-password',
 
 // --- Change password ---
 
-app.post('/api/auth/change-password', authMiddleware,
+app.post('/api/auth/change-password', apiLimiter, authMiddleware,
   body('currentPassword').notEmpty().withMessage('Current password is required').trim(),
   body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters').trim(),
   validate,
@@ -293,7 +293,7 @@ app.post('/api/auth/change-password', authMiddleware,
 
 // --- Delete account ---
 
-app.delete('/api/auth/account', authMiddleware,
+app.delete('/api/auth/account', apiLimiter, authMiddleware,
   body('password').notEmpty().withMessage('Password is required to delete account').trim(),
   validate,
   async (req, res) => {
@@ -317,7 +317,7 @@ app.delete('/api/auth/account', authMiddleware,
 
 // --- Admin routes ---
 
-app.get('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
+app.get('/api/admin/users', apiLimiter, authMiddleware, adminMiddleware, (req, res) => {
   const users = all(`
     SELECT u.id, u.email, u.display_name, u.email_verified, u.is_admin, u.created_at,
       (SELECT COUNT(*) FROM items WHERE user_id = u.id) as item_count
@@ -330,7 +330,7 @@ app.get('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
   })));
 });
 
-app.get('/api/admin/users/:id/items', authMiddleware, adminMiddleware,
+app.get('/api/admin/users/:id/items', apiLimiter, authMiddleware, adminMiddleware,
   param('id').isInt().withMessage('Invalid user ID').toInt(),
   validate,
   (req, res) => {
@@ -350,14 +350,14 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
 }
 
 // Get VAPID public key for client subscription
-app.get('/api/push/vapid-key', (req, res) => {
+app.get('/api/push/vapid-key', apiLimiter, (req, res) => {
   const key = process.env.VAPID_PUBLIC_KEY;
   if (!key) return res.status(404).json({ error: 'Push not configured' });
   res.json({ publicKey: key });
 });
 
 // Save push subscription
-app.post('/api/push/subscribe', (req, res) => {
+app.post('/api/push/subscribe', apiLimiter, (req, res) => {
   const { subscription } = req.body;
   if (!subscription?.endpoint) return res.status(400).json({ error: 'Invalid subscription' });
   const existing = get('SELECT * FROM push_subscriptions WHERE endpoint = ?', [subscription.endpoint]);
@@ -368,7 +368,7 @@ app.post('/api/push/subscribe', (req, res) => {
 });
 
 // Remove push subscription
-app.post('/api/push/unsubscribe', (req, res) => {
+app.post('/api/push/unsubscribe', apiLimiter, (req, res) => {
   const { endpoint } = req.body;
   if (!endpoint) return res.status(400).json({ error: 'endpoint is required' });
   run('DELETE FROM push_subscriptions WHERE endpoint = ?', [endpoint]);
@@ -376,7 +376,7 @@ app.post('/api/push/unsubscribe', (req, res) => {
 });
 
 // Send test push notification
-app.post('/api/push/test', async (req, res) => {
+app.post('/api/push/test', apiLimiter, async (req, res) => {
   const subs = all('SELECT * FROM push_subscriptions');
   if (subs.length === 0) return res.status(400).json({ error: 'No push subscriptions found' });
   const payload = JSON.stringify({ title: '⏰ ExSpire Test', body: 'Push notifications are working!' });
@@ -396,13 +396,13 @@ app.post('/api/push/test', async (req, res) => {
 });
 
 // List all items (for current user)
-app.get('/api/items', authMiddleware, (req, res) => {
+app.get('/api/items', apiLimiter, authMiddleware, (req, res) => {
   const items = all('SELECT * FROM items WHERE user_id = ? ORDER BY expiry_date ASC', [req.userId]);
   res.json(items);
 });
 
 // Create item
-app.post('/api/items', authMiddleware,
+app.post('/api/items', apiLimiter, authMiddleware,
   body('name').notEmpty().withMessage('Name is required').trim().escape(),
   body('category').optional().trim().escape(),
   body('expiry_date').isISO8601().withMessage('Valid date is required (YYYY-MM-DD)').toDate()
@@ -432,7 +432,7 @@ app.post('/api/items', authMiddleware,
 });
 
 // Update item
-app.put('/api/items/:id', authMiddleware,
+app.put('/api/items/:id', apiLimiter, authMiddleware,
   param('id').isInt().withMessage('Invalid item ID').toInt(),
   body('name').optional().trim().escape(),
   body('category').optional().trim().escape(),
@@ -495,7 +495,7 @@ app.put('/api/items/:id', authMiddleware,
 });
 
 // Delete item
-app.delete('/api/items/:id', authMiddleware,
+app.delete('/api/items/:id', apiLimiter, authMiddleware,
   param('id').isInt().withMessage('Invalid item ID').toInt(),
   validate,
   (req, res) => {
@@ -506,7 +506,7 @@ app.delete('/api/items/:id', authMiddleware,
 });
 
 // Send test notification email
-app.post('/api/test-notification', authMiddleware,
+app.post('/api/test-notification', apiLimiter, authMiddleware,
   body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
   validate,
   async (req, res) => {
