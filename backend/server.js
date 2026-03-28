@@ -523,7 +523,7 @@ app.post('/api/test-notification', apiLimiter, authMiddleware,
 const PORT = process.env.PORT || 3001;
 
 // SPA fallback — serve index.html for non-API routes
-app.get('*', (req, res) => {
+app.get('*', apiLimiter, (req, res) => {
   res.sendFile(join(__dirname, '../frontend/dist/index.html'));
 });
 
