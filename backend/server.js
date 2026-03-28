@@ -23,6 +23,16 @@ app.use(express.static(join(__dirname, '../frontend/dist')));
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later' },
+});
+
+app.use('/api/', apiLimiter);
+
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5,
