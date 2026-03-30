@@ -10,34 +10,48 @@ Items are displayed in a spire layout — the closest to expiring sit at the nar
 
 ## Features
 
-- **Tower view** — items stacked by urgency with color-coded expiry indicators (red for imminent, yellow for soon, green for safe)
-- **Categories** — built-in presets (subscription, document, warranty, membership, insurance, domain, license) plus custom categories
+- **Spire view** — items stacked by urgency with color-coded expiry indicators (red ≤3 days, yellow ≤14 days, green for safe). Expired items are dimmed and labeled "ExSpired"
+- **Categories** — built-in presets (subscription, document, warranty, membership, insurance, domain, license) plus custom categories with color-coded badges
 - **Recurring items** — set items to repeat weekly, monthly, or yearly. When they expire, the next occurrence is auto-created with reset notifications
-- **Email reminders** — get notified a configurable number of days before an item expires
-- **Push notifications** — browser push via Web Push, with a test button to verify setup
-- **Search and filter** — filter by category or search by name to find items quickly
-- **Dark and light mode** — toggle in settings, defaults to dark
-- **Spire alignment** — align the spire left, center, or right
+- **Email reminders** — get notified a configurable number of days before an item expires. Styled HTML emails with item details and a direct link to the app
+- **Push notifications** — browser push via Web Push (VAPID). Enable in settings, test with a button to verify setup
+- **Search and filter** — filter by category chips (desktop) or dropdown (mobile), search by name with an inline search bar
+- **Dark and light mode** — toggle in settings, persisted in localStorage. Auth page always uses dark theme
+- **Spire alignment** — align the spire left, center, or right from settings
 - **Show/hide recurring** — toggle recurring items on or off in the spire (off by default)
 - **Paginated spire** — shows 21 items at a time with a "Show more" button
-- **Mobile gestures** — swipe left on items to reveal edit/delete actions, pull down to refresh
-- **Account management** — change password, delete account, email verification
-- **PWA support** — installable as a standalone app on mobile and desktop
+- **Mobile gestures** — swipe left on items to reveal edit/delete actions, pull down to refresh the item list
+- **Inline editing** — edit items directly in the spire without opening a separate form
+- **Account management** — email/password signup, email verification, password reset via email, change password, delete account with password confirmation
+- **Admin panel** — admin users can view all users, their item counts, verification status, and expand to see individual items with urgency indicators
+- **PWA support** — installable as a standalone app on mobile and desktop with a service worker and install prompt banner
+- **Rate limiting** — login/signup limited to 5 attempts per 15 minutes, API endpoints limited to 100 requests per 15 minutes
 
 ## How It Works
 
 1. Create an account with your email and password
-2. Add items with a name, category, expiry date, and optional notification settings
-3. Your spire builds itself — items closest to expiring are at the top
-4. Get email or push reminders before things lapse
-5. Recurring items auto-renew when they expire, so you never lose track
+2. Verify your email via the banner at the top of the app
+3. Add items with a name, category, expiry date, and optional notification settings (email or push, configurable days before)
+4. Your spire builds itself — items closest to expiring are at the top, widening toward the bottom
+5. Get email or push reminders before things lapse (checked hourly by the server)
+6. Recurring items auto-renew when they expire — the date rolls forward and notifications reset
+
+## Tech Stack
+
+- **Frontend**: React 19 + Vite, single-page app with CSS custom properties for theming
+- **Backend**: Express.js (Node.js), RESTful API with JWT auth
+- **Database**: sql.js (SQLite via WebAssembly), single-file persistence
+- **Notifications**: Nodemailer (SMTP) for email, web-push (VAPID) for browser push
+- **Scheduling**: node-cron for hourly notification checks and recurring item renewal
 
 ## Security
 
-- Passwords are hashed with bcrypt (12 rounds)
-- Auth tokens expire after 30 days
-- Rate limiting on login, signup, and password reset (5 attempts per 15 minutes)
-- All inputs are validated and sanitized server-side
+- Passwords hashed with bcrypt (12 rounds)
+- JWT auth tokens expire after 30 days
+- Rate limiting on auth endpoints (5 attempts / 15 min) and API endpoints (100 req / 15 min)
+- All inputs validated and sanitized server-side via express-validator
+- Password reset tokens are single-use and expire after 1 hour
+- Account deletion requires password confirmation
 
 ## Contributing
 
