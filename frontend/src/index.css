@@ -74,6 +74,9 @@ input:focus, select:focus {
   max-width: 1100px;
   margin: 0 auto;
   padding: 2rem 1rem;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .app-header {
@@ -793,7 +796,7 @@ input:focus, select:focus {
 .app-footer {
   text-align: center;
   padding: 1.5rem 0 0.5rem;
-  margin-top: 2rem;
+  margin-top: auto;
   border-top: 1px solid rgba(21, 137, 207, 0.2);
 }
 .app-footer p {
