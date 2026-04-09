@@ -22,8 +22,8 @@ function daysUntil(dateStr) {
 
 function urgencyColor(days) {
   if (days < 0) return 'var(--text-muted)';
-  if (days <= 3) return 'var(--danger)';
-  if (days <= 14) return 'var(--warning)';
+  if (days <= 7) return 'var(--danger)';
+  if (days <= 30) return 'var(--warning)';
   return 'var(--success)';
 }
 
