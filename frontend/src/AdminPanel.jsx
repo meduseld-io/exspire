@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchAdminUsers, fetchAdminUserItems } from './api.js';
+import { fetchAdminUsers, fetchAdminUserItems, testPush } from './api.js';
 import { categoryColors } from './ItemList.jsx';
 
 function daysUntil(dateStr) {
@@ -24,7 +24,7 @@ function urgencyLabel(days) {
   return `${days}d`;
 }
 
-export default function AdminPanel({ onBack }) {
+export default function AdminPanel({ onBack, addToast }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -68,12 +68,28 @@ export default function AdminPanel({ onBack }) {
     }
   };
 
+  const handleTestPush = async () => {
+    try {
+      await testPush();
+      addToast('Test push sent');
+    } catch (err) {
+      console.error('Failed to send test push:', err);
+      addToast(err.message, 'error');
+    }
+  };
+
   return (
     <div className="admin-panel">
       <div className="admin-header">
         <button className="btn-icon" onClick={onBack}>←</button>
         <span className="admin-title">Admin Panel</span>
         <span className="admin-badge">{users.length} users</span>
+      </div>
+
+      <div style={{ padding: '0 1rem 0.75rem', display: 'flex', gap: '0.5rem' }}>
+        <button type="button" className="btn-test" style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }} onClick={handleTestPush}>
+          🔔 Send test push
+        </button>
       </div>
 
       {loading && (

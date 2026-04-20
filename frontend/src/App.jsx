@@ -74,16 +74,6 @@ function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, th
     }
   };
 
-  const handleTestPush = async () => {
-    try {
-      await testPush();
-      addToast('Test push sent');
-    } catch (err) {
-      console.error('Failed to send test push:', err);
-      addToast(err.message, 'error');
-    }
-  };
-
   const handleChangePw = async (e) => {
     e.preventDefault();
     setPwLoading(true);
@@ -194,11 +184,6 @@ function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, th
                 </button>
               </div>
               <span className="settings-hint">Browser push notifications for expiring items</span>
-              {pushEnabled && (
-                <button type="button" className="btn-test" style={{ marginTop: '0.35rem', fontSize: '0.75rem', padding: '0.3rem 0.6rem' }} onClick={handleTestPush}>
-                  Send test push
-                </button>
-              )}
             </div>
           </div>
 
@@ -576,7 +561,7 @@ export default function App() {
       {showForm && <ItemForm initial={editing} onSave={handleSave} onCancel={handleCancel} />}
 
       {showAdmin && !showForm && (
-        <AdminPanel onBack={() => setShowAdmin(false)} />
+        <AdminPanel onBack={() => setShowAdmin(false)} addToast={addToast} />
       )}
 
       {!showForm && !showAdmin && (
