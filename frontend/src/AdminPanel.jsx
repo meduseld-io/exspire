@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchAdminUsers, fetchAdminUserItems, testPush } from './api.js';
+import { fetchAdminUsers, fetchAdminUserItems, testPush, sendTestNotification } from './api.js';
 import { categoryColors } from './ItemList.jsx';
 
 function daysUntil(dateStr) {
@@ -78,6 +78,17 @@ export default function AdminPanel({ onBack, addToast }) {
     }
   };
 
+  const handleTestEmail = async () => {
+    const settings = JSON.parse(localStorage.getItem('exspire_settings') || '{}');
+    try {
+      await sendTestNotification(settings.email || '');
+      addToast('Test email sent');
+    } catch (err) {
+      console.error('Failed to send test email:', err);
+      addToast(err.message, 'error');
+    }
+  };
+
   return (
     <div className="admin-panel">
       <div className="admin-header">
@@ -87,8 +98,11 @@ export default function AdminPanel({ onBack, addToast }) {
       </div>
 
       <div style={{ padding: '0 1rem 0.75rem', display: 'flex', gap: '0.5rem' }}>
+        <button type="button" className="btn-test" style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }} onClick={handleTestEmail}>
+          📧 Test email
+        </button>
         <button type="button" className="btn-test" style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }} onClick={handleTestPush}>
-          🔔 Send test push
+          🔔 Test push
         </button>
       </div>
 
