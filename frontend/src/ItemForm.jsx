@@ -22,7 +22,8 @@ export default function ItemForm({ initial, onSave, onCancel, inline }) {
     category: isCustomInitial ? '__custom__' : (initial?.category || 'subscription'),
     customCategory: isCustomInitial ? initial.category : '',
     expiry_date: initial?.expiry_date?.split('T')[0] || '',
-    notify_type: initial?.notify_push ? 'push' : (initial?.notify_email ? 'email' : 'none'),
+    notify_email_on: !!(initial?.notify_email),
+    notify_push_on: !!(initial?.notify_push),
     notify_days_before: initial?.notify_days_before ?? 7,
     recurrence: initial?.recurrence || 'none',
   });
@@ -44,15 +45,15 @@ export default function ItemForm({ initial, onSave, onCancel, inline }) {
     e.preventDefault();
     const err = validateExpiryDate(form.expiry_date);
     if (err) { setDateError(err); return; }
-    const { customCategory, notify_type, ...data } = form;
+    const { customCategory, notify_email_on, notify_push_on, ...data } = form;
     if (data.category === '__custom__') {
       data.category = customCategory.trim().toLowerCase() || 'other';
     }
-    // Pull email from settings if notification type is email
+    // Pull email from settings if email notification is enabled
     const settings = JSON.parse(localStorage.getItem('exspire_settings') || '{}');
     const userEmail = settings.email || '';
-    data.notify_email = notify_type === 'email' ? userEmail : '';
-    data.notify_push = notify_type === 'push';
+    data.notify_email = notify_email_on ? userEmail : '';
+    data.notify_push = notify_push_on;
     onSave(data);
   };
 
@@ -106,13 +107,18 @@ export default function ItemForm({ initial, onSave, onCancel, inline }) {
       <div style={rowStyle}>
         <div style={fieldStyle}>
           <label style={labelStyle}>Notification</label>
-          <select value={form.notify_type} onChange={e => set('notify_type', e.target.value)}>
-            <option value="none">None</option>
-            <option value="email">Email</option>
-            <option value="push">Push</option>
-          </select>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', minHeight: 38 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', color: 'var(--text)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.notify_email_on} onChange={e => set('notify_email_on', e.target.checked)} />
+              Email
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', color: 'var(--text)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.notify_push_on} onChange={e => set('notify_push_on', e.target.checked)} />
+              Push
+            </label>
+          </div>
         </div>
-        {form.notify_type !== 'none' && (
+        {(form.notify_email_on || form.notify_push_on) && (
           <div style={{ ...fieldStyle, maxWidth: 160 }}>
             <label style={labelStyle}>Days Before</label>
             <input type="number" min="0" max="365" value={form.notify_days_before} onChange={e => set('notify_days_before', parseInt(e.target.value) || 0)} />

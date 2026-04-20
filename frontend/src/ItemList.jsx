@@ -156,12 +156,12 @@ function SwipeableBlock({ item, days, color, catColor, widthPct, delay, onEdit, 
             </div>
             <div className="spire-block-meta spire-block-meta--full">
               {new Date(item.expiry_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-              {item.notify_email && <span> · notify {item.notify_days_before}d before</span>}
+              {(item.notify_email || item.notify_push) && <span> · notify {item.notify_days_before}d before ({[item.notify_email && 'email', item.notify_push && 'push'].filter(Boolean).join(' + ')})</span>}
             </div>
             <div className="spire-block-meta spire-block-meta--mobile">
               {new Date(item.expiry_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
               {item.recurrence && item.recurrence !== 'none' && <span> · 🔄 {item.recurrence}</span>}
-              {item.notify_email && <span> · notify {item.notify_days_before}d before</span>}
+              {(item.notify_email || item.notify_push) && <span> · notify {item.notify_days_before}d before</span>}
             </div>
           </div>
           <div className="spire-block-right">

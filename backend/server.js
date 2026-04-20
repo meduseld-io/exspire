@@ -445,7 +445,11 @@ app.put('/api/items/:id', apiLimiter, authMiddleware,
       if (d < today) throw new Error('Expiry date cannot be in the past');
       return true;
     }),
-  body('notify_email').optional({ values: 'falsy' }).isEmail().withMessage('Valid email required').normalizeEmail(),
+  body('notify_email').optional().custom((value) => {
+    if (value === '' || value === null) return true;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) throw new Error('Valid email required');
+    return true;
+  }),
   body('notify_push').optional().isBoolean().toBoolean(),
   body('notify_days_before').optional().isInt({ min: 0, max: 365 }).withMessage('Notify days must be 0-365').toInt(),
   body('recurrence').optional().isIn(['none', 'weekly', 'monthly', 'yearly']).withMessage('Invalid recurrence value'),
@@ -471,7 +475,7 @@ app.put('/api/items/:id', apiLimiter, authMiddleware,
       name = COALESCE(?, name),
       category = COALESCE(?, category),
       expiry_date = COALESCE(?, expiry_date),
-      notify_email = COALESCE(?, notify_email),
+      notify_email = ?,
       notify_push = ?,
       notify_days_before = COALESCE(?, notify_days_before),
       notified = ?,
@@ -480,7 +484,7 @@ app.put('/api/items/:id', apiLimiter, authMiddleware,
     WHERE id = ?`,
     [
       name || null, category || null, expiry_date || null,
-      notify_email ?? null,
+      notify_email !== undefined ? (notify_email || null) : existing.notify_email,
       notify_push !== undefined ? (notify_push ? 1 : 0) : existing.notify_push,
       notify_days_before ?? null,
       shouldResetNotified ? 0 : existing.notified,
