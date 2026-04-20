@@ -107,20 +107,42 @@ export default function ItemForm({ initial, onSave, onCancel, inline }) {
       <div style={rowStyle}>
         <div style={fieldStyle}>
           <label style={labelStyle}>Notification</label>
-          <select
-            multiple
-            value={[...(form.notify_email_on ? ['email'] : []), ...(form.notify_push_on ? ['push'] : [])]}
-            onChange={e => {
-              const selected = Array.from(e.target.selectedOptions, o => o.value);
-              set('notify_email_on', selected.includes('email'));
-              set('notify_push_on', selected.includes('push'));
-            }}
-            style={{ minHeight: 62 }}
-          >
-            <option value="email">Email</option>
-            <option value="push">Push</option>
-          </select>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Cmd-click to select multiple</span>
+          <div style={{ display: 'flex', gap: '0.5rem', minHeight: 38 }}>
+            <button
+              type="button"
+              onClick={() => set('notify_email_on', !form.notify_email_on)}
+              style={{
+                padding: '0.4rem 0.75rem',
+                fontSize: '0.85rem',
+                borderRadius: 'var(--radius)',
+                border: '1px solid',
+                borderColor: form.notify_email_on ? 'var(--accent)' : 'var(--border)',
+                background: form.notify_email_on ? 'var(--accent)' : 'transparent',
+                color: form.notify_email_on ? '#fff' : 'var(--text-muted)',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              📧 Email
+            </button>
+            <button
+              type="button"
+              onClick={() => set('notify_push_on', !form.notify_push_on)}
+              style={{
+                padding: '0.4rem 0.75rem',
+                fontSize: '0.85rem',
+                borderRadius: 'var(--radius)',
+                border: '1px solid',
+                borderColor: form.notify_push_on ? 'var(--accent)' : 'var(--border)',
+                background: form.notify_push_on ? 'var(--accent)' : 'transparent',
+                color: form.notify_push_on ? '#fff' : 'var(--text-muted)',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              🔔 Push
+            </button>
+          </div>
         </div>
         {(form.notify_email_on || form.notify_push_on) && (
           <div style={{ ...fieldStyle, maxWidth: 160 }}>
