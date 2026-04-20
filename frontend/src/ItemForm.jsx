@@ -107,16 +107,20 @@ export default function ItemForm({ initial, onSave, onCancel, inline }) {
       <div style={rowStyle}>
         <div style={fieldStyle}>
           <label style={labelStyle}>Notification</label>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', minHeight: 38 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', color: 'var(--text)', cursor: 'pointer' }}>
-              <input type="checkbox" checked={form.notify_email_on} onChange={e => set('notify_email_on', e.target.checked)} />
-              Email
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', color: 'var(--text)', cursor: 'pointer' }}>
-              <input type="checkbox" checked={form.notify_push_on} onChange={e => set('notify_push_on', e.target.checked)} />
-              Push
-            </label>
-          </div>
+          <select
+            multiple
+            value={[...(form.notify_email_on ? ['email'] : []), ...(form.notify_push_on ? ['push'] : [])]}
+            onChange={e => {
+              const selected = Array.from(e.target.selectedOptions, o => o.value);
+              set('notify_email_on', selected.includes('email'));
+              set('notify_push_on', selected.includes('push'));
+            }}
+            style={{ minHeight: 62 }}
+          >
+            <option value="email">Email</option>
+            <option value="push">Push</option>
+          </select>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Cmd-click to select multiple</span>
         </div>
         {(form.notify_email_on || form.notify_push_on) && (
           <div style={{ ...fieldStyle, maxWidth: 160 }}>
