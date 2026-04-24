@@ -305,7 +305,7 @@ export default function App() {
     const token = localStorage.getItem('exspire_token');
     if (!token) { setAuthChecked(true); return; }
     getMe()
-      .then(u => { localStorage.setItem('exspire_onboarded', '1'); setUser(u); })
+      .then(u => { localStorage.setItem('exspire_onboarded', '1'); setUser(u); if (u?.isAdmin) setShowOnboarding(true); })
       .catch(err => { console.error('Session check failed:', err); localStorage.removeItem('exspire_token'); })
       .finally(() => setAuthChecked(true));
   }, []);
@@ -425,6 +425,10 @@ export default function App() {
   const handleAuth = (userData, isNewUser) => {
     setUser(userData);
     if (isNewUser && !localStorage.getItem('exspire_onboarded')) {
+      setShowOnboarding(true);
+    }
+    // Always show onboarding for admin users (testing)
+    if (userData?.isAdmin) {
       setShowOnboarding(true);
     }
   };
