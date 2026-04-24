@@ -33,7 +33,6 @@ export default function Onboarding({ onComplete }) {
   const [touchStart, setTouchStart] = useState(null);
   const [touchDelta, setTouchDelta] = useState(0);
   const [swiping, setSwiping] = useState(false);
-  const trackRef = useRef(null);
 
   const goTo = (idx) => {
     if (idx >= 0 && idx < slides.length) setCurrent(idx);
@@ -51,8 +50,12 @@ export default function Onboarding({ onComplete }) {
 
   const handleTouchEnd = () => {
     if (Math.abs(touchDelta) > 50) {
-      if (touchDelta < 0 && current < slides.length - 1) setCurrent(current + 1);
-      else if (touchDelta > 0 && current > 0) setCurrent(current - 1);
+      if (touchDelta < 0) {
+        if (current < slides.length - 1) setCurrent(current + 1);
+        else onComplete();
+      } else if (touchDelta > 0 && current > 0) {
+        setCurrent(current - 1);
+      }
     }
     setTouchStart(null);
     setTouchDelta(0);
@@ -62,65 +65,55 @@ export default function Onboarding({ onComplete }) {
   // Keyboard navigation
   useEffect(() => {
     const handleKey = (e) => {
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') goTo(current + 1);
-      else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') goTo(current - 1);
-      else if (e.key === 'Enter' && current === slides.length - 1) onComplete();
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        if (current < slides.length - 1) goTo(current + 1);
+        else onComplete();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        goTo(current - 1);
+      }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [current, onComplete]);
 
-  const isLast = current === slides.length - 1;
   const offset = swiping ? -current * 100 + (touchDelta / window.innerWidth) * 100 : -current * 100;
 
   return (
-    <div className="onboarding-overlay">
-      <div className="onboarding-container">
-        <button className="onboarding-skip" onClick={onComplete}>Skip</button>
+    <div
+      className="onboarding-overlay"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      <button className="onboarding-skip" onClick={onComplete}>Skip</button>
 
+      <div className="onboarding-track-wrapper">
         <div
-          className="onboarding-track-wrapper"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
+          className="onboarding-track"
+          style={{
+            transform: `translateX(${offset}%)`,
+            transition: swiping ? 'none' : 'transform 0.35s ease',
+          }}
         >
-          <div
-            className="onboarding-track"
-            ref={trackRef}
-            style={{
-              transform: `translateX(${offset}%)`,
-              transition: swiping ? 'none' : 'transform 0.35s ease',
-            }}
-          >
-            {slides.map((slide, i) => (
-              <div className="onboarding-slide" key={i}>
-                <div className="onboarding-emoji">{slide.emoji}</div>
-                <h2 className="onboarding-title">{slide.title}</h2>
-                <p className="onboarding-desc">{slide.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="onboarding-dots">
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              className={`onboarding-dot ${i === current ? 'onboarding-dot--active' : ''}`}
-              onClick={() => goTo(i)}
-              aria-label={`Go to slide ${i + 1}`}
-            />
+          {slides.map((slide, i) => (
+            <div className="onboarding-slide" key={i}>
+              <div className="onboarding-emoji">{slide.emoji}</div>
+              <h2 className="onboarding-title">{slide.title}</h2>
+              <p className="onboarding-desc">{slide.description}</p>
+            </div>
           ))}
         </div>
+      </div>
 
-        <div className="onboarding-actions">
+      <div className="onboarding-dots">
+        {slides.map((_, i) => (
           <button
-            className="btn-primary onboarding-btn-next"
-            onClick={() => isLast ? onComplete() : goTo(current + 1)}
-          >
-            {isLast ? "Get Started" : "Next"}
-          </button>
-        </div>
+            key={i}
+            className={`onboarding-dot ${i === current ? 'onboarding-dot--active' : ''}`}
+            onClick={() => goTo(i)}
+            aria-label={`Go to slide ${i + 1}`}
+          />
+        ))}
       </div>
     </div>
   );
