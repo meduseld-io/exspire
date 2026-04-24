@@ -4,6 +4,7 @@ import ItemForm from './ItemForm.jsx';
 import ItemList, { categoryColors } from './ItemList.jsx';
 import AuthPage from './AuthPage.jsx';
 import AdminPanel from './AdminPanel.jsx';
+import Onboarding from './Onboarding.jsx';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -253,6 +254,7 @@ export default function App() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const profileRef = useRef(null);
   const [theme, setTheme] = useState(getTheme);
   const [settings, setSettings] = useState(() => {
@@ -303,7 +305,7 @@ export default function App() {
     const token = localStorage.getItem('exspire_token');
     if (!token) { setAuthChecked(true); return; }
     getMe()
-      .then(u => setUser(u))
+      .then(u => { localStorage.setItem('exspire_onboarded', '1'); setUser(u); })
       .catch(err => { console.error('Session check failed:', err); localStorage.removeItem('exspire_token'); })
       .finally(() => setAuthChecked(true));
   }, []);
@@ -420,14 +422,27 @@ export default function App() {
     </div>
   );
 
+  const handleAuth = (userData, isNewUser) => {
+    setUser(userData);
+    if (isNewUser && !localStorage.getItem('exspire_onboarded')) {
+      setShowOnboarding(true);
+    }
+  };
+
+  const completeOnboarding = () => {
+    localStorage.setItem('exspire_onboarded', '1');
+    setShowOnboarding(false);
+  };
+
   if (!user) return (
     <div className="auth-transition auth-transition--in">
-      <AuthPage onAuth={setUser} />
+      <AuthPage onAuth={handleAuth} />
     </div>
   );
 
   return (
     <>
+    {showOnboarding && <Onboarding onComplete={completeOnboarding} />}
     {/* Pull-to-refresh indicator — above app container */}
     {(pullDistance > 0 || refreshing) && (
       <div className="pull-indicator" style={{ height: pullDistance }}>

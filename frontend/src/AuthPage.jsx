@@ -41,11 +41,11 @@ export default function AuthPage({ onAuth }) {
       if (mode === 'signup') {
         const data = await signup(email, password, displayName);
         localStorage.setItem('exspire_token', data.token);
-        onAuth(data.user);
+        onAuth(data.user, true);
       } else if (mode === 'login') {
         const data = await login(email, password);
         localStorage.setItem('exspire_token', data.token);
-        onAuth(data.user);
+        onAuth(data.user, false);
       } else if (mode === 'forgot') {
         await forgotPassword(email);
         setSuccess('If an account exists with that email, a reset link has been sent.');
