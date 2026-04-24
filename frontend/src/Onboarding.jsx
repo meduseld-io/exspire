@@ -8,8 +8,8 @@ const slides = [
   },
   {
     emoji: '📦',
-    title: 'Add Your Items',
-    description: 'Tap the + button to add items with a name, expiry date, and category. ExSpire will keep track of everything for you.',
+    title: 'Add It Once, Forget It',
+    description: 'Add an item with its expiry date and you\'re done. ExSpire watches the clock so you don\'t have to.',
   },
   {
     emoji: '🏗️',
