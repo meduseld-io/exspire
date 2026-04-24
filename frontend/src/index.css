@@ -1265,8 +1265,3 @@ input:focus, select:focus {
   font-size: 1.05rem;
   font-weight: 600;
 }
-
-.onboarding-btn-back {
-  padding: 0.85rem 1rem;
-  font-size: 1.05rem;
-}

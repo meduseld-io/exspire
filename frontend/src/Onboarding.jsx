@@ -114,9 +114,6 @@ export default function Onboarding({ onComplete }) {
         </div>
 
         <div className="onboarding-actions">
-          {current > 0 && (
-            <button className="btn-test onboarding-btn-back" onClick={() => goTo(current - 1)}>Back</button>
-          )}
           <button
             className="btn-primary onboarding-btn-next"
             onClick={() => isLast ? onComplete() : goTo(current + 1)}
