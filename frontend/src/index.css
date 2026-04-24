@@ -1172,21 +1172,23 @@ input:focus, select:focus {
 .onboarding-container {
   width: 100%;
   max-width: 420px;
+  height: 100%;
   padding: 2rem 1rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2rem;
+  justify-content: center;
+  gap: 2.5rem;
   position: relative;
 }
 
 .onboarding-skip {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+  top: 1.5rem;
+  right: 1rem;
   background: none;
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   padding: 0.4rem 0.75rem;
 }
 .onboarding-skip:hover {
@@ -1214,19 +1216,19 @@ input:focus, select:focus {
 }
 
 .onboarding-emoji {
-  font-size: 3.5rem;
+  font-size: 5rem;
   line-height: 1;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1rem;
 }
 
 .onboarding-title {
-  font-size: 1.35rem;
+  font-size: 1.75rem;
   font-weight: 700;
   color: var(--text);
 }
 
 .onboarding-desc {
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   color: var(--text-muted);
   line-height: 1.6;
   max-width: 320px;
@@ -1238,8 +1240,8 @@ input:focus, select:focus {
 }
 
 .onboarding-dot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--border);
   padding: 0;
@@ -1254,17 +1256,17 @@ input:focus, select:focus {
   display: flex;
   gap: 0.75rem;
   width: 100%;
-  max-width: 300px;
+  padding: 0 1.5rem;
 }
 
 .onboarding-btn-next {
   flex: 1;
-  padding: 0.65rem 1rem;
-  font-size: 0.95rem;
+  padding: 0.85rem 1rem;
+  font-size: 1.05rem;
   font-weight: 600;
 }
 
 .onboarding-btn-back {
-  padding: 0.65rem 1rem;
-  font-size: 0.95rem;
+  padding: 0.85rem 1rem;
+  font-size: 1.05rem;
 }
