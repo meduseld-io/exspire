@@ -495,6 +495,11 @@ input:focus, select:focus {
 .btn-fab:hover {
   background: var(--accent-hover);
 }
+.btn-fab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
 
 /* Toast notifications */
 .toast-container {
@@ -971,6 +976,18 @@ input:focus, select:focus {
   font-size: 0.9rem;
   margin-bottom: 1.5rem;
   max-width: 400px;
+}
+
+/* Offline banner */
+.offline-banner {
+  background: var(--surface);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  color: var(--warning);
+  text-align: center;
 }
 
 /* Verification banner */

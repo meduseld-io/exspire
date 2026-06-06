@@ -248,6 +248,7 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [toasts, setToasts] = useState([]);
+  const [isOffline, setIsOffline] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [exitingId, setExitingId] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -323,7 +324,11 @@ export default function App() {
 
   const load = async () => {
     setItemsLoading(true);
-    try { setItems(await fetchItems()); }
+    try {
+      const { items, offline } = await fetchItems();
+      setItems(items);
+      setIsOffline(offline);
+    }
     catch (err) { console.error('Failed to load items:', err); addToast('Could not load items', 'error'); }
     finally { setItemsLoading(false); }
   };
@@ -466,6 +471,12 @@ export default function App() {
     >
       {/* Pull-to-refresh indicator removed from here */}
 
+      {isOffline && (
+        <div className="offline-banner">
+          <span>📵 You're offline - showing your last synced items (read only)</span>
+        </div>
+      )}
+
       {!user.emailVerified && (
         <div className="verify-banner">
           <span>📧 Please verify your email address.</span>
@@ -583,7 +594,7 @@ export default function App() {
     </div>
 
     {!showForm && !showAdmin && (
-      <button className="btn-fab" onClick={() => { setEditing(null); setShowForm(true); }} aria-label="Add item">+</button>
+      <button className="btn-fab" onClick={() => { setEditing(null); setShowForm(true); }} aria-label="Add item" disabled={isOffline}>+</button>
     )}
 
     {deleteConfirm && (

@@ -1,9 +1,10 @@
-const CACHE_NAME = 'exspire-v2';
-const STATIC_ASSETS = ['/', '/logo.png', '/favicon.ico'];
+const CACHE_NAME = 'exspire-v3';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then(cache =>
+      cache.addAll(['/', '/index.html', '/manifest.json', '/logo.png', '/favicon.ico'])
+    )
   );
   self.skipWaiting();
 });
@@ -18,18 +19,39 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  // Skip API calls entirely — let them go straight to network
-  if (e.request.url.includes('/api/')) return;
+  if (e.request.method !== 'GET') return;
 
-  // Network-first: try network, fall back to cache (offline support)
-  e.respondWith(
-    fetch(e.request)
-      .then(response => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-        return response;
+  const url = new URL(e.request.url);
+
+  // Navigation requests — always serve index.html from cache
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      caches.match('/index.html').then(cached => {
+        if (cached) return cached;
+        return fetch(e.request).then(res => {
+          caches.open(CACHE_NAME).then(c => c.put(e.request, res.clone()));
+          return res;
+        });
       })
-      .catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // Skip API calls — handled in app layer with localStorage fallback
+  if (url.pathname.startsWith('/api/')) return;
+
+  // All other assets (JS, CSS, images) — cache-first, update in background
+  e.respondWith(
+    caches.match(e.request).then(cached => {
+      const networkFetch = fetch(e.request).then(res => {
+        if (res.ok) {
+          caches.open(CACHE_NAME).then(c => c.put(e.request, res.clone()));
+        }
+        return res;
+      }).catch(() => cached);
+
+      return cached || networkFetch;
+    })
   );
 });
 

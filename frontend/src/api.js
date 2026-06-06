@@ -34,9 +34,21 @@ export async function getMe() {
 }
 
 export async function fetchItems() {
-  const res = await fetch(`${BASE}/items`, { headers: authHeaders() });
-  if (!res.ok) throw new Error('Failed to fetch items');
-  return res.json();
+  try {
+    const res = await fetch(`${BASE}/items`, { headers: authHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch items');
+    const items = await res.json();
+    // Persist to localStorage for offline reads
+    try { localStorage.setItem('exspire_items_cache', JSON.stringify(items)); } catch (_) {}
+    return { items, offline: false };
+  } catch (err) {
+    // Offline or server unreachable - return cached items if available
+    const cached = localStorage.getItem('exspire_items_cache');
+    if (cached) {
+      return { items: JSON.parse(cached), offline: true };
+    }
+    throw err;
+  }
 }
 
 export async function createItem(data) {
