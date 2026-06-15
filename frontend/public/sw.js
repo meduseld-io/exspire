@@ -1,4 +1,4 @@
-const CACHE_NAME = 'exspire-v3';
+const CACHE_NAME = 'exspire-v4';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -23,16 +23,17 @@ self.addEventListener('fetch', (e) => {
 
   const url = new URL(e.request.url);
 
-  // Navigation requests — always serve index.html from cache
+  // Navigation requests — network-first, fall back to cached index.html.
+  // Safari rejects opaque redirects served by service workers, so we let
+  // the browser handle the actual request and only cache the final response.
   if (e.request.mode === 'navigate') {
     e.respondWith(
-      caches.match('/index.html').then(cached => {
-        if (cached) return cached;
-        return fetch(e.request).then(res => {
-          caches.open(CACHE_NAME).then(c => c.put(e.request, res.clone()));
-          return res;
-        });
-      })
+      fetch(e.request).then(res => {
+        if (res.ok && res.type === 'basic') {
+          caches.open(CACHE_NAME).then(c => c.put('/index.html', res.clone()));
+        }
+        return res;
+      }).catch(() => caches.match('/index.html'))
     );
     return;
   }
@@ -44,7 +45,7 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.match(e.request).then(cached => {
       const networkFetch = fetch(e.request).then(res => {
-        if (res.ok) {
+        if (res.ok && res.type === 'basic') {
           caches.open(CACHE_NAME).then(c => c.put(e.request, res.clone()));
         }
         return res;
