@@ -88,13 +88,14 @@ function buildEmailHtml({ name, category, expiryDate, notifyDaysBefore }) {
 }
 
 async function checkAndNotify() {
-  // Email notifications
+  // Email notifications - one-time (frequency = 'once' or not set)
   if (transporter) {
     const emailRows = all(`
       SELECT * FROM items
       WHERE notified = 0
         AND notify_email IS NOT NULL
         AND notify_email != ''
+        AND (notify_frequency IS NULL OR notify_frequency = 'once')
         AND date(expiry_date) <= date('now', '+' || notify_days_before || ' days')
     `);
 
@@ -116,19 +117,64 @@ async function checkAndNotify() {
           }),
         });
 
-        run('UPDATE items SET notified = 1 WHERE id = ?', [item.id]);
+        run('UPDATE items SET notified = 1, last_notified_at = ? WHERE id = ?', [new Date().toISOString(), item.id]);
         console.log(`Email sent for "${item.name}" to ${item.notify_email}`);
       } catch (err) {
         console.error(`Failed to send email for "${item.name}":`, err);
       }
     }
+
+    // Email notifications - repeating (frequency = 'daily' or 'weekly')
+    const repeatEmailRows = all(`
+      SELECT * FROM items
+      WHERE notify_email IS NOT NULL
+        AND notify_email != ''
+        AND notify_frequency IN ('daily', 'weekly')
+        AND date(expiry_date) <= date('now', '+' || notify_days_before || ' days')
+        AND date(expiry_date) >= date('now')
+    `);
+
+    for (const item of repeatEmailRows) {
+      // Check if enough time has passed since last notification
+      if (item.last_notified_at) {
+        const last = new Date(item.last_notified_at);
+        const now = new Date();
+        const hoursSince = (now - last) / (1000 * 60 * 60);
+        if (item.notify_frequency === 'daily' && hoursSince < 23) continue;
+        if (item.notify_frequency === 'weekly' && hoursSince < 167) continue;
+      }
+
+      try {
+        const expiryDate = new Date(item.expiry_date).toLocaleDateString('en-GB', {
+          day: 'numeric', month: 'long', year: 'numeric',
+        });
+
+        await transporter.sendMail({
+          from: process.env.NOTIFICATION_FROM || process.env.SMTP_USER,
+          to: item.notify_email,
+          subject: `⏰ Expiring soon: ${item.name}`,
+          html: buildEmailHtml({
+            name: item.name,
+            category: item.category,
+            expiryDate,
+            notifyDaysBefore: item.notify_days_before,
+          }),
+        });
+
+        run('UPDATE items SET last_notified_at = ? WHERE id = ?', [new Date().toISOString(), item.id]);
+        console.log(`Repeat email sent for "${item.name}" to ${item.notify_email} (${item.notify_frequency})`);
+      } catch (err) {
+        console.error(`Failed to send repeat email for "${item.name}":`, err);
+      }
+    }
   }
 
-  // Push notifications
+  // Push notifications - one-time (frequency = 'once' or not set)
   const pushRows = all(`
     SELECT * FROM items
     WHERE push_notified = 0
       AND notify_push = 1
+      AND (notify_frequency IS NULL OR notify_frequency = 'once')
       AND date(expiry_date) <= date('now', '+' || notify_days_before || ' days')
   `);
 
@@ -152,8 +198,51 @@ async function checkAndNotify() {
           }
         }
       }
-      run('UPDATE items SET push_notified = 1 WHERE id = ?', [item.id]);
+      run('UPDATE items SET push_notified = 1, last_notified_at = ? WHERE id = ?', [new Date().toISOString(), item.id]);
       console.log(`Push sent for "${item.name}"`);
+    }
+  }
+
+  // Push notifications - repeating (frequency = 'daily' or 'weekly')
+  const repeatPushRows = all(`
+    SELECT * FROM items
+    WHERE notify_push = 1
+      AND notify_frequency IN ('daily', 'weekly')
+      AND date(expiry_date) <= date('now', '+' || notify_days_before || ' days')
+      AND date(expiry_date) >= date('now')
+  `);
+
+  if (repeatPushRows.length > 0) {
+    const subs = all('SELECT * FROM push_subscriptions');
+    for (const item of repeatPushRows) {
+      // Check if enough time has passed since last notification
+      if (item.last_notified_at) {
+        const last = new Date(item.last_notified_at);
+        const now = new Date();
+        const hoursSince = (now - last) / (1000 * 60 * 60);
+        if (item.notify_frequency === 'daily' && hoursSince < 23) continue;
+        if (item.notify_frequency === 'weekly' && hoursSince < 167) continue;
+      }
+
+      const expiryDate = new Date(item.expiry_date).toLocaleDateString('en-GB', {
+        day: 'numeric', month: 'long', year: 'numeric',
+      });
+      const payload = JSON.stringify({
+        title: `⏰ Expiring soon: ${item.name}`,
+        body: `${item.name} (${item.category}) expires on ${expiryDate}`,
+      });
+      for (const sub of subs) {
+        try {
+          await webpush.sendNotification(JSON.parse(sub.keys_json), payload);
+        } catch (err) {
+          console.error(`Failed to push for "${item.name}":`, err);
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            run('DELETE FROM push_subscriptions WHERE id = ?', [sub.id]);
+          }
+        }
+      }
+      run('UPDATE items SET last_notified_at = ? WHERE id = ?', [new Date().toISOString(), item.id]);
+      console.log(`Repeat push sent for "${item.name}" (${item.notify_frequency})`);
     }
   }
 }

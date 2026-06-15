@@ -25,6 +25,7 @@ export default function ItemForm({ initial, onSave, onCancel, inline }) {
     notify_email_on: !!(initial?.notify_email),
     notify_push_on: !!(initial?.notify_push),
     notify_days_before: initial?.notify_days_before ?? 7,
+    notify_frequency: initial?.notify_frequency || 'once',
     recurrence: initial?.recurrence || 'none',
   });
   const [dateError, setDateError] = useState('');
@@ -60,6 +61,8 @@ export default function ItemForm({ initial, onSave, onCancel, inline }) {
   const style = inline
     ? { ...formStyle, marginBottom: 0, padding: '1rem' }
     : formStyle;
+
+  const notificationsEnabled = form.notify_email_on || form.notify_push_on;
 
   return (
     <form onSubmit={handleSubmit} style={style}>
@@ -144,13 +147,31 @@ export default function ItemForm({ initial, onSave, onCancel, inline }) {
             </button>
           </div>
         </div>
-        {(form.notify_email_on || form.notify_push_on) && (
+        {notificationsEnabled && (
           <div style={{ ...fieldStyle, maxWidth: 160 }}>
             <label style={labelStyle}>Days Before</label>
             <input type="number" min="0" max="365" value={form.notify_days_before} onChange={e => set('notify_days_before', parseInt(e.target.value) || 0)} />
           </div>
         )}
       </div>
+
+      {notificationsEnabled && (
+        <div style={rowStyle}>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Remind</label>
+            <select value={form.notify_frequency} onChange={e => set('notify_frequency', e.target.value)}>
+              <option value="once">Once</option>
+              <option value="daily">Every day</option>
+              <option value="weekly">Every week</option>
+            </select>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+              {form.notify_frequency === 'once'
+                ? 'Single notification when the window opens'
+                : `Repeats ${form.notify_frequency} from ${form.notify_days_before}d before until expiry`}
+            </span>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
         <button type="submit" style={{ background: 'var(--accent)', color: '#fff' }}>{initial ? 'Update' : 'Add Item'}</button>

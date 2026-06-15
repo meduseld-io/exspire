@@ -418,14 +418,16 @@ app.post('/api/items', apiLimiter, authMiddleware,
   body('notify_push').optional().isBoolean().toBoolean(),
   body('notify_days_before').optional().isInt({ min: 0, max: 365 }).withMessage('Notify days must be 0-365').toInt(),
   body('recurrence').optional().isIn(['none', 'weekly', 'monthly', 'yearly']).withMessage('Invalid recurrence value'),
+  body('notify_frequency').optional().isIn(['once', 'daily', 'weekly']).withMessage('Invalid notify frequency value'),
   validate,
   (req, res) => {
-  const { name, category, expiry_date, notify_email, notify_push, notify_days_before, recurrence } = req.body;
+  const { name, category, expiry_date, notify_email, notify_push, notify_days_before, recurrence, notify_frequency } = req.body;
   const expDate = typeof expiry_date === 'object' ? expiry_date.toISOString().split('T')[0] : expiry_date;
   const rec = recurrence || 'none';
+  const freq = notify_frequency || 'once';
   const result = run(
-    `INSERT INTO items (user_id, name, category, expiry_date, notify_email, notify_push, notify_days_before, recurrence) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [req.userId, name, category || 'other', expDate, notify_email || null, notify_push ? 1 : 0, notify_days_before ?? 7, rec]
+    `INSERT INTO items (user_id, name, category, expiry_date, notify_email, notify_push, notify_days_before, recurrence, notify_frequency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [req.userId, name, category || 'other', expDate, notify_email || null, notify_push ? 1 : 0, notify_days_before ?? 7, rec, freq]
   );
   const item = get('SELECT * FROM items WHERE id = ?', [result.lastId]);
   res.status(201).json(item);
@@ -453,19 +455,24 @@ app.put('/api/items/:id', apiLimiter, authMiddleware,
   body('notify_push').optional().isBoolean().toBoolean(),
   body('notify_days_before').optional().isInt({ min: 0, max: 365 }).withMessage('Notify days must be 0-365').toInt(),
   body('recurrence').optional().isIn(['none', 'weekly', 'monthly', 'yearly']).withMessage('Invalid recurrence value'),
+  body('notify_frequency').optional().isIn(['once', 'daily', 'weekly']).withMessage('Invalid notify frequency value'),
   validate,
   (req, res) => {
-  const { name, category, expiry_date, notify_email, notify_push, notify_days_before, recurrence } = req.body;
+  const { name, category, expiry_date, notify_email, notify_push, notify_days_before, recurrence, notify_frequency } = req.body;
   const existing = get('SELECT * FROM items WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
   if (!existing) return res.status(404).json({ error: 'Item not found' });
 
   const validRecurrences = ['none', 'weekly', 'monthly', 'yearly'];
   const rec = recurrence !== undefined ? (validRecurrences.includes(recurrence) ? recurrence : existing.recurrence) : existing.recurrence;
 
+  const validFreqs = ['once', 'daily', 'weekly'];
+  const freq = notify_frequency !== undefined ? (validFreqs.includes(notify_frequency) ? notify_frequency : existing.notify_frequency || 'once') : (existing.notify_frequency || 'once');
+
   const shouldResetNotified =
     (expiry_date && expiry_date !== existing.expiry_date) ||
     (notify_days_before !== undefined && notify_days_before !== existing.notify_days_before) ||
-    (notify_email && notify_email !== existing.notify_email);
+    (notify_email && notify_email !== existing.notify_email) ||
+    (notify_frequency !== undefined && notify_frequency !== (existing.notify_frequency || 'once'));
 
   const shouldResetPushNotified = shouldResetNotified ||
     (notify_push !== undefined && (notify_push ? 1 : 0) !== existing.notify_push);
@@ -480,7 +487,9 @@ app.put('/api/items/:id', apiLimiter, authMiddleware,
       notify_days_before = COALESCE(?, notify_days_before),
       notified = ?,
       push_notified = ?,
-      recurrence = ?
+      recurrence = ?,
+      notify_frequency = ?,
+      last_notified_at = ?
     WHERE id = ?`,
     [
       name || null, category || null, expiry_date || null,
@@ -490,6 +499,8 @@ app.put('/api/items/:id', apiLimiter, authMiddleware,
       shouldResetNotified ? 0 : existing.notified,
       shouldResetPushNotified ? 0 : existing.push_notified,
       rec,
+      freq,
+      shouldResetNotified ? null : existing.last_notified_at,
       req.params.id,
     ]
   );
