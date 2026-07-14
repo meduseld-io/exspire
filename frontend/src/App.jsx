@@ -309,7 +309,6 @@ export default function App() {
       .then(u => {
         localStorage.setItem('exspire_onboarded', '1');
         setUser(u);
-        if (u?.isAdmin) setShowOnboarding(true);
       })
       .catch(err => { console.error('Session check failed:', err); localStorage.removeItem('exspire_token'); })
       .finally(() => setAuthChecked(true));
@@ -435,10 +434,6 @@ export default function App() {
     setUser(userData);
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     if (isNewUser && !localStorage.getItem('exspire_onboarded') && isStandalone) {
-      setShowOnboarding(true);
-    }
-    // Always show onboarding for admin users (testing)
-    if (userData?.isAdmin) {
       setShowOnboarding(true);
     }
   };
