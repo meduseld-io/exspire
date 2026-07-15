@@ -2,10 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '/etc/exspire.env' });
 import express from 'express';
 import cors from 'cors';
-import crypto from 'crypto';
 import webpush from 'web-push';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import rateLimit from 'express-rate-limit';
@@ -15,13 +12,24 @@ import { startNotifier, sendTestNotification, getTransporter } from './notifier.
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
-app.use(cors());
+
+// CORS - allow credentials from meduseld.io subdomains
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || /\.meduseld\.io$/.test(new URL(origin).hostname) || origin === 'http://localhost:5173') {
+      cb(null, true);
+    } else {
+      cb(null, false);
+    }
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 // Serve frontend build in production
 app.use(express.static(join(__dirname, '../frontend/dist')));
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+const ACCOUNTS_URL = process.env.ACCOUNTS_URL || 'https://accounts.meduseld.io';
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -29,14 +37,6 @@ const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later' },
-});
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many attempts, please try again in 15 minutes' },
 });
 
 function validate(req, res, next) {
@@ -47,286 +47,110 @@ function validate(req, res, next) {
   next();
 }
 
-function signToken(user) {
-  return jwt.sign({ id: user.id, email: user.email, isAdmin: !!user.is_admin }, JWT_SECRET, { expiresIn: '30d' });
-}
+// ================= AUTH MIDDLEWARE =================
+// Validates the user's Meduseld Account session by forwarding cookies to accounts service
 
-function authMiddleware(req, res, next) {
-  const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Not authenticated' });
+async function authMiddleware(req, res, next) {
+  const cookies = req.headers.cookie;
+  if (!cookies || !cookies.includes('meduseld_access')) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
   try {
-    const payload = jwt.verify(header.slice(7), JWT_SECRET);
-    req.userId = payload.id;
+    const resp = await fetch(`${ACCOUNTS_URL}/user/me`, {
+      headers: { cookie: cookies },
+      redirect: 'manual',
+    });
+
+    if (resp.status === 401) {
+      // Try refresh
+      const refreshResp = await fetch(`${ACCOUNTS_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { cookie: cookies },
+        redirect: 'manual',
+      });
+
+      if (!refreshResp.ok) {
+        return res.status(401).json({ error: 'Session expired', code: 'TOKEN_EXPIRED' });
+      }
+
+      // Forward new cookies to the client
+      const setCookies = refreshResp.headers.getSetCookie?.() || [];
+      setCookies.forEach(c => res.append('Set-Cookie', c));
+
+      const refreshData = await refreshResp.json();
+      if (refreshData.user) {
+        req.user = refreshData.user;
+        req.userId = refreshData.user.id;
+        return next();
+      }
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    if (!resp.ok) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const user = await resp.json();
+    req.user = user;
+    req.userId = user.id;
     next();
   } catch (err) {
-    console.error('JWT verification failed:', err);
-    return res.status(401).json({ error: 'Invalid token' });
+    console.error('Auth validation failed:', err);
+    return res.status(500).json({ error: 'Auth service unavailable' });
   }
 }
 
 function adminMiddleware(req, res, next) {
-  const user = get('SELECT is_admin FROM users WHERE id = ?', [req.userId]);
-  if (!user || !user.is_admin) return res.status(403).json({ error: 'Admin access required' });
+  // Check ExSpire's own admin flag (set via migration or manually)
+  const localUser = get('SELECT is_admin FROM users WHERE meduseld_id = ?', [req.userId]);
+  if (localUser && localUser.is_admin) return next();
+  return res.status(403).json({ error: 'Admin access required' });
+}
+
+// ================= USER SYNC =================
+// Ensure the Meduseld Account user has a local ExSpire record (for item ownership)
+
+function ensureLocalUser(req, res, next) {
+  const existing = get('SELECT id FROM users WHERE meduseld_id = ?', [req.userId]);
+  if (existing) {
+    req.localUserId = existing.id;
+    return next();
+  }
+
+  // Create local record
+  const result = run(
+    'INSERT INTO users (meduseld_id, email, display_name) VALUES (?, ?, ?)',
+    [req.userId, req.user.email, req.user.displayName || null]
+  );
+  req.localUserId = result.lastId;
   next();
 }
 
-// --- Auth routes ---
-
-app.post('/api/auth/signup', authLimiter,
-  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters').trim(),
-  body('displayName').optional().trim().escape(),
-  validate,
-  async (req, res) => {
-  const { email, password, displayName } = req.body;
-
-  const existing = get('SELECT id FROM users WHERE email = ?', [email.toLowerCase()]);
-  if (existing) return res.status(409).json({ error: 'An account with this email already exists' });
-
-  try {
-    const hash = await bcrypt.hash(password, 12);
-    const result = run('INSERT INTO users (email, password_hash, display_name) VALUES (?, ?, ?)', [email.toLowerCase(), hash, displayName || null]);
-    const user = get('SELECT id, email, display_name, email_verified FROM users WHERE id = ?', [result.lastId]);
-    res.status(201).json({ token: signToken(user), user: { id: user.id, email: user.email, displayName: user.display_name, emailVerified: !!user.email_verified, isAdmin: false } });
-  } catch (err) {
-    console.error('Signup failed:', err);
-    res.status(500).json({ error: 'Signup failed' });
-  }
-});
-
-app.post('/api/auth/login', authLimiter,
-  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
-  body('password').notEmpty().withMessage('Password is required').trim(),
-  validate,
-  async (req, res) => {
-  const { email, password } = req.body;
-
-  const user = get('SELECT * FROM users WHERE email = ?', [email.toLowerCase()]);
-  if (!user) return res.status(401).json({ error: 'Invalid email or password' });
-
-  try {
-    const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
-    res.json({ token: signToken(user), user: { id: user.id, email: user.email, displayName: user.display_name, emailVerified: !!user.email_verified, isAdmin: !!user.is_admin } });
-  } catch (err) {
-    console.error('Login failed:', err);
-    res.status(500).json({ error: 'Login failed' });
-  }
-});
-
-const APP_URL = process.env.APP_URL || 'https://exspire.meduseld.io';
-
-function buildAuthEmail({ heading, body, ctaText, ctaUrl }) {
-  return `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8" /></head>
-<body style="margin:0;padding:0;background:#0f1117;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f1117;padding:32px 16px">
-    <tr><td align="center">
-      <table width="520" cellpadding="0" cellspacing="0" style="background:#1a1d27;border-radius:8px;border:1px solid #2a2e3a;overflow:hidden">
-        <tr>
-          <td style="background:#1a1d27;padding:24px 32px 16px;border-bottom:1px solid #2a2e3a">
-            <img src="${APP_URL}/logo.png" alt="ExSpire" style="height:28px;width:auto;vertical-align:middle;margin-right:8px" />
-            <span style="font-size:20px;font-weight:700;color:#1589cf;vertical-align:middle">ExSpire</span>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:24px 32px">
-            <p style="margin:0 0 12px;font-size:18px;font-weight:600;color:#e4e4e7">${heading}</p>
-            <p style="margin:0 0 20px;font-size:14px;color:#e4e4e7;line-height:1.6">${body}</p>
-            <a href="${ctaUrl}" style="display:inline-block;background:#1589cf;color:#fff;text-decoration:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600">${ctaText}</a>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:16px 32px;border-top:1px solid #2a2e3a">
-            <p style="margin:0;font-size:12px;color:#8b8d97">
-              Sent by <a href="${APP_URL}" style="color:#1589cf;text-decoration:none">ExSpire</a> · Expiry tracking made simple
-            </p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
-}
+// ================= AUTH STATUS ENDPOINT =================
 
 app.get('/api/auth/me', apiLimiter, authMiddleware, (req, res) => {
-  const user = get('SELECT id, email, display_name, email_verified, is_admin FROM users WHERE id = ?', [req.userId]);
-  if (!user) return res.status(404).json({ error: 'User not found' });
-  res.json({ id: user.id, email: user.email, displayName: user.display_name, emailVerified: !!user.email_verified, isAdmin: !!user.is_admin });
+  const localUser = get('SELECT is_admin FROM users WHERE meduseld_id = ?', [req.userId]);
+  res.json({
+    id: req.user.id,
+    email: req.user.email,
+    displayName: req.user.displayName,
+    emailVerified: req.user.emailVerified,
+    isAdmin: !!(localUser && localUser.is_admin),
+  });
 });
 
-// --- Email verification ---
-
-app.post('/api/auth/send-verification', apiLimiter, authMiddleware, async (req, res) => {
-  const user = get('SELECT * FROM users WHERE id = ?', [req.userId]);
-  if (!user) return res.status(404).json({ error: 'User not found' });
-  if (user.email_verified) return res.json({ message: 'Already verified' });
-
-  const t = getTransporter();
-  if (!t) return res.status(500).json({ error: 'Email not configured' });
-
-  try {
-    const token = jwt.sign({ id: user.id, purpose: 'verify' }, JWT_SECRET, { expiresIn: '24h' });
-    const url = `${APP_URL}?verify=${encodeURIComponent(token)}`;
-    await t.sendMail({
-      from: process.env.NOTIFICATION_FROM || process.env.SMTP_USER,
-      to: user.email,
-      subject: 'Verify your ExSpire account',
-      html: buildAuthEmail({
-        heading: 'Verify your email',
-        body: 'Click the button below to verify your email address. This link expires in 24 hours.',
-        ctaText: 'Verify Email',
-        ctaUrl: url,
-      }),
-    });
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Failed to send verification email:', err);
-    res.status(500).json({ error: 'Failed to send verification email' });
-  }
-});
-
-app.post('/api/auth/verify',
-  apiLimiter,
-  body('token').notEmpty().withMessage('Token is required').trim(),
-  validate,
-  async (req, res) => {
-  const { token } = req.body;
-  try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    if (payload.purpose !== 'verify') return res.status(400).json({ error: 'Invalid token' });
-    run('UPDATE users SET email_verified = 1 WHERE id = ?', [payload.id]);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Email verification failed:', err);
-    res.status(400).json({ error: 'Invalid or expired token' });
-  }
-});
-
-// --- Password reset ---
-
-app.post('/api/auth/forgot-password', authLimiter,
-  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
-  validate,
-  async (req, res) => {
-  const { email } = req.body;
-
-  // Always return success to prevent email enumeration
-  const user = get('SELECT * FROM users WHERE email = ?', [email.toLowerCase()]);
-  if (!user) return res.json({ success: true });
-
-  const t = getTransporter();
-  if (!t) return res.status(500).json({ error: 'Email not configured' });
-
-  try {
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
-    run('INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)', [user.id, token, expiresAt]);
-
-    const url = `${APP_URL}?reset=${encodeURIComponent(token)}`;
-    await t.sendMail({
-      from: process.env.NOTIFICATION_FROM || process.env.SMTP_USER,
-      to: user.email,
-      subject: 'Reset your ExSpire password',
-      html: buildAuthEmail({
-        heading: 'Reset your password',
-        body: 'Click the button below to set a new password. This link expires in 1 hour. If you didn\'t request this, you can safely ignore this email.',
-        ctaText: 'Reset Password',
-        ctaUrl: url,
-      }),
-    });
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Failed to send password reset email:', err);
-    res.status(500).json({ error: 'Failed to send reset email' });
-  }
-});
-
-app.post('/api/auth/reset-password',
-  apiLimiter,
-  body('token').notEmpty().withMessage('Token is required').trim(),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters').trim(),
-  validate,
-  async (req, res) => {
-  const { token, password } = req.body;
-
-  const row = get("SELECT * FROM password_reset_tokens WHERE token = ? AND used = 0 AND expires_at > datetime('now')", [token]);
-  if (!row) return res.status(400).json({ error: 'Invalid or expired reset link' });
-
-  try {
-    const hash = await bcrypt.hash(password, 12);
-    run('UPDATE users SET password_hash = ? WHERE id = ?', [hash, row.user_id]);
-    run('UPDATE password_reset_tokens SET used = 1 WHERE id = ?', [row.id]);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Password reset failed:', err);
-    res.status(500).json({ error: 'Password reset failed' });
-  }
-});
-
-// --- Change password ---
-
-app.post('/api/auth/change-password', apiLimiter, authMiddleware,
-  body('currentPassword').notEmpty().withMessage('Current password is required').trim(),
-  body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters').trim(),
-  validate,
-  async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
-
-  const user = get('SELECT * FROM users WHERE id = ?', [req.userId]);
-  if (!user) return res.status(404).json({ error: 'User not found' });
-
-  try {
-    const valid = await bcrypt.compare(currentPassword, user.password_hash);
-    if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
-    const hash = await bcrypt.hash(newPassword, 12);
-    run('UPDATE users SET password_hash = ? WHERE id = ?', [hash, user.id]);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Change password failed:', err);
-    res.status(500).json({ error: 'Failed to change password' });
-  }
-});
-
-// --- Delete account ---
-
-app.delete('/api/auth/account', apiLimiter, authMiddleware,
-  body('password').notEmpty().withMessage('Password is required to delete account').trim(),
-  validate,
-  async (req, res) => {
-  const { password } = req.body;
-
-  const user = get('SELECT * FROM users WHERE id = ?', [req.userId]);
-  if (!user) return res.status(404).json({ error: 'User not found' });
-
-  try {
-    const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) return res.status(401).json({ error: 'Incorrect password' });
-    run('DELETE FROM items WHERE user_id = ?', [user.id]);
-    run('DELETE FROM password_reset_tokens WHERE user_id = ?', [user.id]);
-    run('DELETE FROM users WHERE id = ?', [user.id]);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Delete account failed:', err);
-    res.status(500).json({ error: 'Failed to delete account' });
-  }
-});
-
-// --- Admin routes ---
+// ================= ADMIN ROUTES =================
 
 app.get('/api/admin/users', apiLimiter, authMiddleware, adminMiddleware, (req, res) => {
   const users = all(`
-    SELECT u.id, u.email, u.display_name, u.email_verified, u.is_admin, u.created_at,
+    SELECT u.id, u.meduseld_id, u.email, u.display_name, u.is_admin, u.created_at,
       (SELECT COUNT(*) FROM items WHERE user_id = u.id) as item_count
     FROM users u ORDER BY u.created_at DESC
   `);
   res.json(users.map(u => ({
-    id: u.id, email: u.email, displayName: u.display_name,
-    emailVerified: !!u.email_verified, isAdmin: !!u.is_admin,
-    createdAt: u.created_at, itemCount: u.item_count,
+    id: u.id, meduseldId: u.meduseld_id, email: u.email, displayName: u.display_name,
+    isAdmin: !!u.is_admin, createdAt: u.created_at, itemCount: u.item_count,
   })));
 });
 
@@ -340,6 +164,8 @@ app.get('/api/admin/users/:id/items', apiLimiter, authMiddleware, adminMiddlewar
   res.json(items);
 });
 
+// ================= PUSH NOTIFICATIONS =================
+
 // Configure web push if VAPID keys are set
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(
@@ -349,25 +175,23 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   );
 }
 
-// Get VAPID public key for client subscription
 app.get('/api/push/vapid-key', apiLimiter, (req, res) => {
   const key = process.env.VAPID_PUBLIC_KEY;
   if (!key) return res.status(404).json({ error: 'Push not configured' });
   res.json({ publicKey: key });
 });
 
-// Save push subscription
-app.post('/api/push/subscribe', apiLimiter, (req, res) => {
+app.post('/api/push/subscribe', apiLimiter, authMiddleware, ensureLocalUser, (req, res) => {
   const { subscription } = req.body;
   if (!subscription?.endpoint) return res.status(400).json({ error: 'Invalid subscription' });
   const existing = get('SELECT * FROM push_subscriptions WHERE endpoint = ?', [subscription.endpoint]);
   if (!existing) {
-    run('INSERT INTO push_subscriptions (endpoint, keys_json) VALUES (?, ?)', [subscription.endpoint, JSON.stringify(subscription)]);
+    run('INSERT INTO push_subscriptions (endpoint, keys_json, user_id) VALUES (?, ?, ?)',
+      [subscription.endpoint, JSON.stringify(subscription), req.localUserId]);
   }
   res.json({ success: true });
 });
 
-// Remove push subscription
 app.post('/api/push/unsubscribe', apiLimiter, (req, res) => {
   const { endpoint } = req.body;
   if (!endpoint) return res.status(400).json({ error: 'endpoint is required' });
@@ -375,8 +199,7 @@ app.post('/api/push/unsubscribe', apiLimiter, (req, res) => {
   res.json({ success: true });
 });
 
-// Send test push notification
-app.post('/api/push/test', apiLimiter, async (req, res) => {
+app.post('/api/push/test', apiLimiter, authMiddleware, async (req, res) => {
   const subs = all('SELECT * FROM push_subscriptions');
   if (subs.length === 0) return res.status(400).json({ error: 'No push subscriptions found' });
   const payload = JSON.stringify({ title: '⏰ ExSpire Test', body: 'Push notifications are working!' });
@@ -395,14 +218,14 @@ app.post('/api/push/test', apiLimiter, async (req, res) => {
   res.json({ success: true, sent });
 });
 
-// List all items (for current user)
-app.get('/api/items', apiLimiter, authMiddleware, (req, res) => {
-  const items = all('SELECT * FROM items WHERE user_id = ? ORDER BY expiry_date ASC', [req.userId]);
+// ================= ITEMS =================
+
+app.get('/api/items', apiLimiter, authMiddleware, ensureLocalUser, (req, res) => {
+  const items = all('SELECT * FROM items WHERE user_id = ? ORDER BY expiry_date ASC', [req.localUserId]);
   res.json(items);
 });
 
-// Create item
-app.post('/api/items', apiLimiter, authMiddleware,
+app.post('/api/items', apiLimiter, authMiddleware, ensureLocalUser,
   body('name').notEmpty().withMessage('Name is required').trim().escape(),
   body('category').optional().trim().escape(),
   body('expiry_date').isISO8601().withMessage('Valid date is required (YYYY-MM-DD)').toDate()
@@ -427,14 +250,13 @@ app.post('/api/items', apiLimiter, authMiddleware,
   const freq = notify_frequency || 'once';
   const result = run(
     `INSERT INTO items (user_id, name, category, expiry_date, notify_email, notify_push, notify_days_before, recurrence, notify_frequency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [req.userId, name, category || 'other', expDate, notify_email || null, notify_push ? 1 : 0, notify_days_before ?? 7, rec, freq]
+    [req.localUserId, name, category || 'other', expDate, notify_email || null, notify_push ? 1 : 0, notify_days_before ?? 7, rec, freq]
   );
   const item = get('SELECT * FROM items WHERE id = ?', [result.lastId]);
   res.status(201).json(item);
 });
 
-// Update item
-app.put('/api/items/:id', apiLimiter, authMiddleware,
+app.put('/api/items/:id', apiLimiter, authMiddleware, ensureLocalUser,
   param('id').isInt().withMessage('Invalid item ID').toInt(),
   body('name').optional().trim().escape(),
   body('category').optional().trim().escape(),
@@ -459,7 +281,7 @@ app.put('/api/items/:id', apiLimiter, authMiddleware,
   validate,
   (req, res) => {
   const { name, category, expiry_date, notify_email, notify_push, notify_days_before, recurrence, notify_frequency } = req.body;
-  const existing = get('SELECT * FROM items WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
+  const existing = get('SELECT * FROM items WHERE id = ? AND user_id = ?', [req.params.id, req.localUserId]);
   if (!existing) return res.status(404).json({ error: 'Item not found' });
 
   const validRecurrences = ['none', 'weekly', 'monthly', 'yearly'];
@@ -509,18 +331,18 @@ app.put('/api/items/:id', apiLimiter, authMiddleware,
   res.json(item);
 });
 
-// Delete item
-app.delete('/api/items/:id', apiLimiter, authMiddleware,
+app.delete('/api/items/:id', apiLimiter, authMiddleware, ensureLocalUser,
   param('id').isInt().withMessage('Invalid item ID').toInt(),
   validate,
   (req, res) => {
-  const existing = get('SELECT * FROM items WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
+  const existing = get('SELECT * FROM items WHERE id = ? AND user_id = ?', [req.params.id, req.localUserId]);
   if (!existing) return res.status(404).json({ error: 'Item not found' });
-  run('DELETE FROM items WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
+  run('DELETE FROM items WHERE id = ? AND user_id = ?', [req.params.id, req.localUserId]);
   res.json({ success: true });
 });
 
-// Send test notification email
+// ================= TEST NOTIFICATION =================
+
 app.post('/api/test-notification', apiLimiter, authMiddleware,
   body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
   validate,
@@ -535,10 +357,16 @@ app.post('/api/test-notification', apiLimiter, authMiddleware,
   }
 });
 
+// ================= HEALTH (PUBLIC) =================
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', service: 'exspire' });
+});
+
 const PORT = process.env.PORT || 3001;
 
-// SPA fallback — serve index.html for non-API routes
-app.get('*', apiLimiter, (req, res) => {
+// SPA fallback
+app.get('*', (req, res) => {
   res.sendFile(join(__dirname, '../frontend/dist/index.html'));
 });
 

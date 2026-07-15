@@ -1,59 +1,24 @@
-import { useState, useEffect } from 'react';
-import { signup, login, forgotPassword, resetPassword, verifyEmail } from './api.js';
+import { useState } from 'react';
 
-export default function AuthPage({ onAuth }) {
-  const [mode, setMode] = useState('login'); // login | signup | forgot | reset
+export default function AuthPage({ auth, onAuth }) {
+  const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const [resetToken, setResetToken] = useState('');
-
-  // Check URL params for reset token or verify token on mount
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const reset = params.get('reset');
-    const verify = params.get('verify');
-    if (reset) {
-      setResetToken(reset);
-      setMode('reset');
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-    if (verify) {
-      window.history.replaceState({}, '', window.location.pathname);
-      verifyEmail(verify)
-        .then(() => setSuccess('Email verified. You can now sign in.'))
-        .catch(err => {
-          console.error('Email verification failed:', err);
-          setError(err.message);
-        });
-    }
-  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
     setLoading(true);
     try {
       if (mode === 'signup') {
-        const data = await signup(email, password, displayName);
-        localStorage.setItem('exspire_token', data.token);
-        onAuth(data.user, true);
-      } else if (mode === 'login') {
-        const data = await login(email, password);
-        localStorage.setItem('exspire_token', data.token);
-        onAuth(data.user, false);
-      } else if (mode === 'forgot') {
-        await forgotPassword(email);
-        setSuccess('If an account exists with that email, a reset link has been sent.');
-      } else if (mode === 'reset') {
-        await resetPassword(resetToken, password);
-        setSuccess('Password reset. You can now sign in.');
-        setMode('login');
+        await auth.signupInline(email, password, displayName);
+      } else {
+        await auth.loginInline(email, password);
       }
+      onAuth(auth.getUser());
     } catch (err) {
       console.error(`${mode} failed:`, err);
       setError(err.message);
@@ -65,7 +30,6 @@ export default function AuthPage({ onAuth }) {
   const switchMode = (newMode) => {
     setMode(newMode);
     setError('');
-    setSuccess('');
   };
 
   return (
@@ -76,10 +40,7 @@ export default function AuthPage({ onAuth }) {
           <span className="app-title">ExSpire</span>
         </div>
         <p className="auth-subtitle">
-          {mode === 'login' && 'Sign in to your account'}
-          {mode === 'signup' && 'Create your account'}
-          {mode === 'forgot' && 'Reset your password'}
-          {mode === 'reset' && 'Set a new password'}
+          {mode === 'login' ? 'Sign in with your Meduseld Account' : 'Create a Meduseld Account'}
         </p>
 
         <form onSubmit={handleSubmit}>
@@ -95,54 +56,49 @@ export default function AuthPage({ onAuth }) {
             </div>
           )}
 
-          {(mode === 'login' || mode === 'signup' || mode === 'forgot') && (
-            <div className="auth-field">
-              <label>Email</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-              />
-            </div>
-          )}
+          <div className="auth-field">
+            <label>Email</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+            />
+          </div>
 
-          {(mode === 'login' || mode === 'signup' || mode === 'reset') && (
-            <div className="auth-field">
-              <label>{mode === 'reset' ? 'New password' : 'Password'}</label>
-              <input
-                type="password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={mode === 'login' ? 'Your password' : 'At least 6 characters'}
-              />
-            </div>
-          )}
+          <div className="auth-field">
+            <label>Password</label>
+            <input
+              type="password"
+              required
+              minLength={8}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Min. 8 characters"
+            />
+          </div>
 
           {error && <p className="auth-error">{error}</p>}
-          {success && <p className="auth-success">{success}</p>}
 
           <button type="submit" className="btn-primary auth-submit" disabled={loading}>
-            {loading ? 'Please wait…' : {
-              login: 'Sign in',
-              signup: 'Create account',
-              forgot: 'Send reset link',
-              reset: 'Set new password',
-            }[mode]}
+            {loading ? 'Please wait…' : (mode === 'login' ? 'Sign in' : 'Create account')}
           </button>
         </form>
 
         {mode === 'login' && (
           <>
-            <button className="auth-forgot-btn" onClick={() => switchMode('forgot')}>
+            <a
+              className="auth-forgot-btn"
+              href="https://accounts.meduseld.io?redirect=https://exspire.meduseld.io"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Forgot password?
-            </button>
+            </a>
             <p className="auth-switch">
-              Don't have an account?{' '}
-              <button className="auth-switch-btn" onClick={() => switchMode('signup')}>Sign up</button>
+              No account?{' '}
+              <button className="auth-switch-btn" onClick={() => switchMode('signup')}>Create one</button>
             </p>
           </>
         )}
@@ -152,16 +108,10 @@ export default function AuthPage({ onAuth }) {
             <button className="auth-switch-btn" onClick={() => switchMode('login')}>Sign in</button>
           </p>
         )}
-        {mode === 'forgot' && (
-          <p className="auth-switch">
-            <button className="auth-switch-btn" onClick={() => switchMode('login')}>Back to sign in</button>
-          </p>
-        )}
-        {mode === 'reset' && (
-          <p className="auth-switch">
-            <button className="auth-switch-btn" onClick={() => switchMode('login')}>Back to sign in</button>
-          </p>
-        )}
+
+        <p className="auth-branding">
+          Powered by <a href="https://accounts.meduseld.io" target="_blank" rel="noopener noreferrer">Meduseld Account</a>
+        </p>
 
         <p className="auth-copyright">
           &copy; {new Date().getFullYear()} <a href="https://github.com/meduseld-io" target="_blank" rel="noopener noreferrer">meduseld.io</a>

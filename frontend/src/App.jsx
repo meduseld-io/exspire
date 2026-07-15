@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchItems, createItem, updateItem, deleteItem, getVapidKey, subscribePush, unsubscribePush, getMe, sendVerification, changePassword, deleteAccount } from './api.js';
+import { fetchItems, createItem, updateItem, deleteItem, getVapidKey, subscribePush, unsubscribePush, getMe, sendTestNotification } from './api.js';
+import { MeduseldAuth } from './meduseld-auth.js';
 import ItemForm from './ItemForm.jsx';
 import ItemList, { categoryColors } from './ItemList.jsx';
 import AuthPage from './AuthPage.jsx';
 import AdminPanel from './AdminPanel.jsx';
 import Onboarding from './Onboarding.jsx';
+
+const auth = new MeduseldAuth('exspire');
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -28,15 +31,6 @@ function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, th
   const [pushLoading, setPushLoading] = useState(false);
   const [spireAlign, setTowerAlign] = useState(settings.spireAlign || 'center');
   const [showRecurring, setShowRecurring] = useState(settings.showRecurring ?? false);
-  // Change password
-  const [showChangePw, setShowChangePw] = useState(false);
-  const [currentPw, setCurrentPw] = useState('');
-  const [newPw, setNewPw] = useState('');
-  const [pwLoading, setPwLoading] = useState(false);
-  // Delete account
-  const [showDeleteAcct, setShowDeleteAcct] = useState(false);
-  const [deletePw, setDeletePw] = useState('');
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handlePushToggle = async () => {
     setPushLoading(true);
@@ -72,38 +66,6 @@ function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, th
       addToast('Could not toggle push', 'error');
     } finally {
       setPushLoading(false);
-    }
-  };
-
-  const handleChangePw = async (e) => {
-    e.preventDefault();
-    setPwLoading(true);
-    try {
-      await changePassword(currentPw, newPw);
-      addToast('Password changed');
-      setShowChangePw(false);
-      setCurrentPw('');
-      setNewPw('');
-    } catch (err) {
-      console.error('Failed to change password:', err);
-      addToast(err.message, 'error');
-    } finally {
-      setPwLoading(false);
-    }
-  };
-
-  const handleDeleteAcct = async (e) => {
-    e.preventDefault();
-    setDeleteLoading(true);
-    try {
-      await deleteAccount(deletePw);
-      addToast('Account deleted');
-      onLogout();
-    } catch (err) {
-      console.error('Failed to delete account:', err);
-      addToast(err.message, 'error');
-    } finally {
-      setDeleteLoading(false);
     }
   };
 
@@ -171,7 +133,7 @@ function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, th
           </div>
 
           <div className="settings-section">
-            <span className="settings-section-title">Integrations</span>
+            <span className="settings-section-title">Notifications</span>
             <div className="settings-field">
               <label className="settings-label">📧 Email address</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
@@ -190,41 +152,16 @@ function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, th
 
           <div className="settings-section">
             <span className="settings-section-title">Account</span>
-            {!showChangePw ? (
-              <button type="button" className="btn-test" style={{ width: '100%' }} onClick={() => setShowChangePw(true)}>
-                🔒 Change password
-              </button>
-            ) : (
-              <div className="settings-inline-form">
-                <input type="password" placeholder="Current password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} />
-                <input type="password" placeholder="New password (min 6)" minLength={6} value={newPw} onChange={(e) => setNewPw(e.target.value)} />
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="button" className="btn-cancel" style={{ flex: 1 }} onClick={() => { setShowChangePw(false); setCurrentPw(''); setNewPw(''); }}>Cancel</button>
-                  <button type="button" className="btn-primary" style={{ flex: 1 }} disabled={pwLoading || !currentPw || newPw.length < 6} onClick={handleChangePw}>
-                    {pwLoading ? '…' : 'Update'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div style={{ marginTop: '0.75rem' }}>
-              {!showDeleteAcct ? (
-                <button type="button" className="btn-danger" style={{ width: '100%', opacity: 0.8 }} onClick={() => setShowDeleteAcct(true)}>
-                  🗑️ Delete account
-                </button>
-              ) : (
-                <div className="settings-inline-form">
-                  <p style={{ fontSize: '0.8rem', color: 'var(--danger)', margin: '0 0 0.5rem' }}>This will permanently delete your account and all items. Enter your password to confirm.</p>
-                  <input type="password" placeholder="Your password" value={deletePw} onChange={(e) => setDeletePw(e.target.value)} />
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button type="button" className="btn-cancel" style={{ flex: 1 }} onClick={() => { setShowDeleteAcct(false); setDeletePw(''); }}>Cancel</button>
-                    <button type="button" className="btn-danger" style={{ flex: 1 }} disabled={deleteLoading || !deletePw} onClick={handleDeleteAcct}>
-                      {deleteLoading ? '…' : 'Delete forever'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            <a
+              href="https://accounts.meduseld.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-test"
+              style={{ width: '100%', display: 'block', textAlign: 'center', textDecoration: 'none' }}
+            >
+              Manage Meduseld Account
+            </a>
+            <span className="settings-hint" style={{ marginTop: '0.4rem', display: 'block' }}>Change password, manage sessions, or delete account</span>
           </div>
 
           <div className="settings-actions">
@@ -303,20 +240,27 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem('exspire_token');
-    if (!token) { setAuthChecked(true); return; }
-    getMe()
-      .then(u => {
-        localStorage.setItem('exspire_onboarded', '1');
-        setUser(u);
-        if (u?.isAdmin) setShowOnboarding(true);
-      })
-      .catch(err => { console.error('Session check failed:', err); localStorage.removeItem('exspire_token'); })
-      .finally(() => setAuthChecked(true));
+    // Restore session via Meduseld Account
+    auth.init().then(user => {
+      if (user) {
+        // Get ExSpire-specific info (isAdmin)
+        getMe()
+          .then(exspireUser => {
+            localStorage.setItem('exspire_onboarded', '1');
+            setUser(exspireUser);
+          })
+          .catch(err => {
+            console.error('ExSpire /me failed, using Meduseld data:', err);
+            setUser({ id: user.id, email: user.email, displayName: user.displayName, emailVerified: user.emailVerified, isAdmin: false });
+          });
+      }
+    }).catch(err => {
+      console.error('Auth init failed:', err);
+    }).finally(() => setAuthChecked(true));
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('exspire_token');
+  const handleLogout = async () => {
+    await auth.logout();
     document.documentElement.setAttribute('data-theme', 'dark');
     setUser(null);
     setItems([]);
@@ -431,14 +375,10 @@ export default function App() {
     </div>
   );
 
-  const handleAuth = (userData, isNewUser) => {
+  const handleAuth = (userData) => {
     setUser(userData);
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    if (isNewUser && !localStorage.getItem('exspire_onboarded') && isStandalone) {
-      setShowOnboarding(true);
-    }
-    // Always show onboarding for admin users (testing)
-    if (userData?.isAdmin) {
+    if (!localStorage.getItem('exspire_onboarded') && isStandalone) {
       setShowOnboarding(true);
     }
   };
@@ -450,7 +390,7 @@ export default function App() {
 
   if (!user) return (
     <div className="auth-transition auth-transition--in">
-      <AuthPage onAuth={handleAuth} />
+      <AuthPage auth={auth} onAuth={handleAuth} />
     </div>
   );
 
@@ -474,28 +414,6 @@ export default function App() {
       {isOffline && (
         <div className="offline-banner">
           <span>📵 You're offline - showing your last synced items (read only)</span>
-        </div>
-      )}
-
-      {!user.emailVerified && (
-        <div className="verify-banner">
-          <span>📧 Please verify your email address.</span>
-          <button className="btn-test" id="verify-btn" onClick={async (e) => {
-            const btn = e.currentTarget;
-            btn.disabled = true;
-            btn.textContent = 'Sending…';
-            try {
-              await sendVerification();
-              addToast('Verification email sent — check your inbox');
-              btn.textContent = 'Sent ✓';
-              setTimeout(() => { btn.textContent = 'Resend'; btn.disabled = false; }, 5000);
-            } catch (err) {
-              console.error('Failed to send verification email:', err);
-              addToast(err.message, 'error');
-              btn.textContent = 'Send verification';
-              btn.disabled = false;
-            }
-          }}>Send verification</button>
         </div>
       )}
 

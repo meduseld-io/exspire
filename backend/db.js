@@ -21,23 +21,11 @@ export async function initDb() {
   db.run(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
+      meduseld_id INTEGER UNIQUE,
+      email TEXT NOT NULL,
       display_name TEXT,
-      email_verified INTEGER NOT NULL DEFAULT 0,
+      is_admin INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS password_reset_tokens (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      token TEXT NOT NULL UNIQUE,
-      expires_at TEXT NOT NULL,
-      used INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `);
 
@@ -63,7 +51,9 @@ export async function initDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       endpoint TEXT NOT NULL UNIQUE,
       keys_json TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      user_id INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `);
 
@@ -71,11 +61,13 @@ export async function initDb() {
   try { db.run('ALTER TABLE items ADD COLUMN notify_push INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* column exists */ }
   try { db.run('ALTER TABLE items ADD COLUMN push_notified INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* column exists */ }
   try { db.run('ALTER TABLE items ADD COLUMN user_id INTEGER'); } catch (e) { /* column exists */ }
-  try { db.run('ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* column exists */ }
   try { db.run("ALTER TABLE items ADD COLUMN recurrence TEXT NOT NULL DEFAULT 'none'"); } catch (e) { /* column exists */ }
-  try { db.run('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* column exists */ }
   try { db.run("ALTER TABLE items ADD COLUMN notify_frequency TEXT NOT NULL DEFAULT 'once'"); } catch (e) { /* column exists */ }
   try { db.run('ALTER TABLE items ADD COLUMN last_notified_at TEXT'); } catch (e) { /* column exists */ }
+  // Meduseld Account migration columns
+  try { db.run('ALTER TABLE users ADD COLUMN meduseld_id INTEGER UNIQUE'); } catch (e) { /* column exists */ }
+  try { db.run('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* column exists */ }
+  try { db.run('ALTER TABLE push_subscriptions ADD COLUMN user_id INTEGER'); } catch (e) { /* column exists */ }
   save();
   return db;
 }
