@@ -16,42 +16,40 @@ Items are displayed in a spire layout - the closest to expiring sit at the narro
 - **Email reminders** - get notified a configurable number of days before an item expires. Styled HTML emails with item details and a direct link to the app
 - **Push notifications** - browser push via Web Push (VAPID). Enable in settings, test with a button to verify setup
 - **Search and filter** - filter by category chips (desktop) or dropdown (mobile), search by name with an inline search bar
-- **Dark and light mode** - toggle in settings, persisted in localStorage. Auth page always uses dark theme
+- **Dark and light mode** - toggle in settings, persisted in localStorage
 - **Spire alignment** - align the spire left, center, or right from settings
 - **Show/hide recurring** - toggle recurring items on or off in the spire (off by default)
 - **Paginated spire** - shows 21 items at a time with a "Show more" button
 - **Mobile gestures** - swipe left on items to reveal edit/delete actions, pull down to refresh the item list
 - **Inline editing** - edit items directly in the spire without opening a separate form
-- **Account management** - email/password signup, email verification, password reset via email, change password, delete account with password confirmation
-- **Admin panel** - admin users can view all users, their item counts, verification status, and expand to see individual items with urgency indicators
+- **Meduseld Account** - sign in with a shared account across all Meduseld apps (ExSpire, Lembas, Bree, Bruinen). Manage your password and sessions at accounts.meduseld.io.
+- **Admin panel** - admin users can view all users, their item counts, and expand to see individual items with urgency indicators
 - **PWA support** - installable as a standalone app on mobile and desktop with a service worker and install prompt banner
-- **Rate limiting** - login/signup limited to 5 attempts per 15 minutes, API endpoints limited to 100 requests per 15 minutes
+- **Rate limiting** - API endpoints limited to 100 requests per 15 minutes
 
 ## How It Works
 
-1. Create an account with your email and password
-2. Verify your email via the banner at the top of the app
-3. Add items with a name, category, expiry date, and optional notification settings (email or push, configurable days before)
-4. Your spire builds itself - items closest to expiring are at the top, widening toward the bottom
-5. Get email or push reminders before things lapse (checked hourly by the server)
-6. Recurring items auto-renew when they expire - the date rolls forward and notifications reset
+1. Sign in with your Meduseld Account (or create one - same account works on Lembas, Bree, and Bruinen)
+2. Add items with a name, category, expiry date, and optional notification settings (email or push, configurable days before)
+3. Your spire builds itself - items closest to expiring are at the top, widening toward the bottom
+4. Get email or push reminders before things lapse (checked hourly by the server)
+5. Recurring items auto-renew when they expire - the date rolls forward and notifications reset
 
 ## Tech Stack
 
 - **Frontend**: React 19 + Vite, single-page app with CSS custom properties for theming
-- **Backend**: Express.js (Node.js), RESTful API with JWT auth
+- **Backend**: Express.js (Node.js), RESTful API
+- **Auth**: Meduseld Account (session cookies validated via accounts.meduseld.io)
 - **Database**: sql.js (SQLite via WebAssembly), single-file persistence
 - **Notifications**: Nodemailer (SMTP) for email, web-push (VAPID) for browser push
 - **Scheduling**: node-cron for hourly notification checks and recurring item renewal
 
 ## Security
 
-- Passwords hashed with bcrypt (12 rounds)
-- JWT auth tokens expire after 30 days
-- Rate limiting on auth endpoints (5 attempts / 15 min) and API endpoints (100 req / 15 min)
+- Auth handled by Meduseld Account service (bcrypt, rotating refresh tokens, CSRF protection)
+- Rate limiting on API endpoints (100 req / 15 min)
 - All inputs validated and sanitized server-side via express-validator
-- Password reset tokens are single-use and expire after 1 hour
-- Account deletion requires password confirmation
+- Session validation via cookie forwarding to accounts service
 
 ## Contributing
 
