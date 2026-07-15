@@ -14,6 +14,7 @@ Items are displayed in a spire layout - the closest to expiring sit at the narro
 - **Categories** - built-in presets (subscription, document, warranty, membership, insurance, domain, license) plus custom categories with color-coded badges
 - **Recurring items** - set items to repeat weekly, monthly, or yearly. When they expire, the next occurrence is auto-created with reset notifications
 - **Email reminders** - get notified a configurable number of days before an item expires. Styled HTML emails with item details and a direct link to the app
+- **Notification frequency** - choose how often reminders repeat: once, every day, or every week from the "days before" window until expiry
 - **Push notifications** - browser push via Web Push (VAPID). Enable in settings, test with a button to verify setup
 - **Search and filter** - filter by category chips (desktop) or dropdown (mobile), search by name with an inline search bar
 - **Dark and light mode** - toggle in settings, persisted in localStorage
@@ -25,6 +26,7 @@ Items are displayed in a spire layout - the closest to expiring sit at the narro
 - **Meduseld Account** - sign in with a shared account across all Meduseld apps (ExSpire, Lembas, Bree, Bruinen). Manage your password and sessions at accounts.meduseld.io.
 - **Admin panel** - admin users can view all users, their item counts, and expand to see individual items with urgency indicators
 - **PWA support** - installable as a standalone app on mobile and desktop with a service worker and install prompt banner
+- **First-time onboarding** - swipeable carousel guide shown to new users in standalone PWA mode (Welcome, Add Items, The Spire, Notifications, All Set)
 - **Rate limiting** - API endpoints limited to 100 requests per 15 minutes
 
 ## How It Works
