@@ -83,7 +83,11 @@ function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, th
         </div>
 
         <div className="settings-profile">
-          <span className="profile-avatar profile-avatar--lg">{user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}</span>
+          {user?.avatar ? (
+            <img src={`https://accounts.meduseld.io/avatars/${user.avatar}.png`} alt="" className="profile-avatar-img profile-avatar-img--lg" />
+          ) : (
+            <span className="profile-avatar profile-avatar--lg">{user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}</span>
+          )}
           <div>
             <div className="settings-name">{user?.displayName || 'User'}</div>
             <div className="settings-sub">{user?.email}</div>
@@ -261,6 +265,10 @@ export default function App() {
 
   const handleLogout = async () => {
     await auth.logout();
+    // Clear local cache so next user on this device starts fresh
+    localStorage.removeItem('exspire_items_cache');
+    localStorage.removeItem('exspire_settings');
+    localStorage.removeItem('exspire_onboarded');
     document.documentElement.setAttribute('data-theme', 'dark');
     setUser(null);
     setItems([]);
@@ -443,7 +451,11 @@ export default function App() {
           )}
           <div className="profile-wrapper" ref={profileRef}>
             <button className="btn-profile" onClick={() => setProfileOpen(!profileOpen)}>
-              <span className="profile-avatar">{user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}</span>
+              {user?.avatar ? (
+                <img src={`https://accounts.meduseld.io/avatars/${user.avatar}.png`} alt="" className="profile-avatar-img" />
+              ) : (
+                <span className="profile-avatar">{user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}</span>
+              )}
             </button>
             {profileOpen && (
               <div className="profile-dropdown">

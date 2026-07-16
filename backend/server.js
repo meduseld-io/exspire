@@ -135,6 +135,7 @@ app.get('/api/auth/me', apiLimiter, authMiddleware, (req, res) => {
     id: req.user.id,
     email: req.user.email,
     displayName: req.user.displayName,
+    avatar: req.user.avatar || null,
     emailVerified: req.user.emailVerified,
     isAdmin: !!(localUser && localUser.is_admin),
   });

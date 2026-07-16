@@ -51,6 +51,40 @@ export class MeduseldAuth {
     window.location.href = `${this.baseUrl}?redirect=${encodeURIComponent(redirect)}`;
   }
 
+  async loginInline(email, password) {
+    const res = await fetch(`${this.baseUrl}/auth/login`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new AuthError(data.error || 'Login failed', res.status);
+    }
+    this.user = data.user;
+    this.csrfToken = data.csrfToken;
+    this._notify();
+    return data;
+  }
+
+  async signupInline(email, password, displayName) {
+    const res = await fetch(`${this.baseUrl}/auth/signup`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, displayName: displayName || undefined }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new AuthError(data.error || 'Signup failed', res.status);
+    }
+    this.user = data.user;
+    this.csrfToken = data.csrfToken;
+    this._notify();
+    return data;
+  }
+
   async logout() {
     try {
       await this._request('/auth/logout', { method: 'POST' });

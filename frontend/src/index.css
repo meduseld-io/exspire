@@ -664,6 +664,19 @@ input:focus, select:focus {
   font-size: 1.1rem;
   flex-shrink: 0;
 }
+.profile-avatar-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 15%;
+  display: block;
+}
+.profile-avatar-img--lg {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
 
 /* Settings modal */
 .settings-modal {
