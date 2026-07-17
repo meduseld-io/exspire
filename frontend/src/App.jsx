@@ -103,7 +103,7 @@ function SettingsModal({ settings, onSave, onClose, addToast, user, onLogout, th
                 <button
                   type="button"
                   className={`toggle-btn ${theme === 'light' ? 'toggle-btn--on' : ''}`}
-                  onClick={() => { const t = theme === 'dark' ? 'light' : 'dark'; setTheme(t); applyTheme(t); }}
+                  onClick={() => { const t = theme === 'dark' ? 'light' : 'dark'; setTheme(t); }}
                 >
                   {theme === 'dark' ? 'Dark' : 'Light'}
                 </button>
@@ -203,6 +203,19 @@ export default function App() {
     try { return JSON.parse(localStorage.getItem('exspire_settings') || '{}'); }
     catch (e) { console.error('Failed to parse settings from localStorage:', e); return {}; }
   });
+  const settingsSyncRef = useRef(null);
+
+  // Save settings to server (debounced)
+  const syncSettingsToServer = useCallback((newSettings, newTheme) => {
+    if (settingsSyncRef.current) clearTimeout(settingsSyncRef.current);
+    settingsSyncRef.current = setTimeout(async () => {
+      try {
+        await auth.saveData({ settings: newSettings, theme: newTheme }, 'settings');
+      } catch (e) {
+        console.error('Failed to sync settings to server:', e);
+      }
+    }, 1000);
+  }, []);
 
   // Pull-to-refresh state
   const [pullDistance, setPullDistance] = useState(0);
@@ -257,6 +270,23 @@ export default function App() {
             console.error('ExSpire /me failed, using Meduseld data:', err);
             setUser({ id: user.id, email: user.email, displayName: user.displayName, emailVerified: user.emailVerified, isAdmin: false });
           });
+        // Load settings from server
+        auth.loadData('settings').then(data => {
+          if (data && data.settings) {
+            // Server has settings - use them as source of truth
+            setSettings(data.settings);
+            if (data.theme) { setTheme(data.theme); applyTheme(data.theme); }
+            localStorage.removeItem('exspire_settings');
+          } else {
+            // Server has no settings - migrate from localStorage if available
+            const local = (() => { try { return JSON.parse(localStorage.getItem('exspire_settings') || '{}'); } catch (e) { return {}; } })();
+            const localTheme = localStorage.getItem('exspire_theme') || 'dark';
+            if (Object.keys(local).length > 0) {
+              auth.saveData({ settings: local, theme: localTheme }, 'settings').catch(e => console.error('Failed to migrate settings to server:', e));
+              localStorage.removeItem('exspire_settings');
+            }
+          }
+        }).catch(e => console.error('Failed to load settings from server:', e));
       }
     }).catch(err => {
       console.error('Auth init failed:', err);
@@ -270,6 +300,8 @@ export default function App() {
     localStorage.removeItem('exspire_settings');
     localStorage.removeItem('exspire_onboarded');
     document.documentElement.setAttribute('data-theme', 'dark');
+    setSettings({});
+    setTheme('dark');
     setUser(null);
     setItems([]);
   };
@@ -292,7 +324,11 @@ export default function App() {
     if (user && !settings.email) {
       const updated = { ...settings, email: user.email };
       setSettings(updated);
-      localStorage.setItem('exspire_settings', JSON.stringify(updated));
+      if (auth.isAuthenticated()) {
+        syncSettingsToServer(updated, theme);
+      } else {
+        localStorage.setItem('exspire_settings', JSON.stringify(updated));
+      }
     }
   }, [user]);
 
@@ -364,10 +400,23 @@ export default function App() {
 
   const handleSaveSettings = (newSettings) => {
     setSettings(newSettings);
-    localStorage.setItem('exspire_settings', JSON.stringify(newSettings));
+    if (auth.isAuthenticated()) {
+      syncSettingsToServer(newSettings, theme);
+    } else {
+      localStorage.setItem('exspire_settings', JSON.stringify(newSettings));
+    }
     setShowSettings(false);
     addToast('Settings saved');
   };
+
+  // Also sync theme to server when it changes (theme toggle is applied immediately in the modal)
+  const handleThemeChange = useCallback((newTheme) => {
+    setTheme(newTheme);
+    applyTheme(newTheme);
+    if (auth.isAuthenticated()) {
+      syncSettingsToServer(settings, newTheme);
+    }
+  }, [settings, syncSettingsToServer]);
 
   const showRecurringPref = settings.showRecurring ?? false;
   const baseItems = showRecurringPref ? items : items.filter(i => !i.recurrence || i.recurrence === 'none');
@@ -539,7 +588,7 @@ export default function App() {
       </div>
     )}
 
-    {showSettings && <SettingsModal settings={settings} onSave={handleSaveSettings} onClose={() => setShowSettings(false)} addToast={addToast} user={user} onLogout={handleLogout} theme={theme} setTheme={setTheme} />}
+    {showSettings && <SettingsModal settings={settings} onSave={handleSaveSettings} onClose={() => setShowSettings(false)} addToast={addToast} user={user} onLogout={handleLogout} theme={theme} setTheme={handleThemeChange} />}
 
     <div className="toast-container">
       {toasts.map(t => <div key={t.id} className={`toast toast--${t.type}`}>{t.message}</div>)}
