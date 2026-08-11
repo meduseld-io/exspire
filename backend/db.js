@@ -65,7 +65,8 @@ export async function initDb() {
   try { db.run("ALTER TABLE items ADD COLUMN notify_frequency TEXT NOT NULL DEFAULT 'once'"); } catch (e) { /* column exists */ }
   try { db.run('ALTER TABLE items ADD COLUMN last_notified_at TEXT'); } catch (e) { /* column exists */ }
   // Meduseld Account migration columns
-  try { db.run('ALTER TABLE users ADD COLUMN meduseld_id INTEGER UNIQUE'); } catch (e) { /* column exists */ }
+  try { db.run('ALTER TABLE users ADD COLUMN meduseld_id INTEGER'); } catch (e) { /* column exists */ }
+  try { db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_meduseld_id ON users(meduseld_id) WHERE meduseld_id IS NOT NULL'); } catch (e) { /* index exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* column exists */ }
   try { db.run('ALTER TABLE push_subscriptions ADD COLUMN user_id INTEGER'); } catch (e) { /* column exists */ }
   save();
